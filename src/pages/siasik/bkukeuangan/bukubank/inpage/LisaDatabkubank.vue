@@ -1,0 +1,185 @@
+<template>
+  <div class="row q-px-sm q-py-sm full-width flex-center">
+    <q-markup-table class="custom-table" flat bordered style="width: 100%;" wrap-cells :separator="separator">
+      <thead>
+        <tr class="text-bold">
+          <th class="text-center" style="font-size: 12px">NO</th>
+          <th class="text-center" style="font-size: 12px">TANGGAL</th>
+          <th class="text-center" style="font-size: 12px">REGISTER/REKENING</th>
+          <th class="text-center" style="font-size: 12px">URAIAN</th>
+          <th class="text-center" style="font-size: 12px">PENERIMAAN (Rp.)</th>
+          <th class="text-center" style="font-size: 12px">PENGELUARAN (Rp.)</th>
+          <th class="text-center" style="font-size: 12px">SALDO (Rp.)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template v-for="(item, n) in store.hasilArray" :key="n">
+          <tr>
+            <td class="text-bold">
+              {{ n + 1 }}
+            </td>
+            <td class="text-bold">
+              {{ item?.tgl }}
+            </td>
+            <td class="text-left text-bold q-pl-sm q-pr-sm">
+              {{ item?.notrans }}
+            </td>
+            <td class="text-left text-bold q-pl-sm q-pr-sm">
+              {{ item?.uraian }}
+            </td>
+            <td class="text-right text-bold q-pl-sm q-pr-sm">
+              {{ formattanpaRp(item?.penerimaan) }}
+            </td>
+            <td class="text-right text-bold q-pl-sm q-pr-sm">
+              {{ formattanpaRp(item?.pengeluaran) }}
+            </td>
+            <td class="text-right text-bold q-pl-sm q-pr-sm">
+              {{ formattanpaRp(item?.total) }}
+            </td>
+          </tr>
+          <template v-if="item?.nonpd?.length">
+            <template v-for="it in item?.nonpd" :key="it">
+              <tr>
+                <td colspan="2"></td>
+                <td class="text-left q-pl-sm q-pr-sm" style="font-size: 11px"> {{ it?.nonpd }}</td>
+                <td class="text-left q-pl-sm q-pr-sm" style="font-size: 11px">{{ it?.uraianNPD }} </td>
+                <td class="text-right q-pl-sm q-pr-sm" style="font-size: 11px">
+                  {{ formattanpaRp(0) }}
+                </td>
+                <td class="text-right q-pl-sm q-pr-sm" style="font-size: 11px">
+                  {{ formattanpaRp(it?.totalRincian) }}
+                </td>
+                <td></td>
+              </tr>
+              <template v-for="rek in it.rincian" :key="rek">
+                <tr>
+                  <td colspan="2"></td>
+                  <td class="text-left q-pl-sm q-pr-sm" style="font-size: 11px;"> * {{ rek?.koderek50 }}</td>
+                  <td class="text-left q-pl-sm q-pr-sm" style="font-size: 11px;"> * {{ rek?.rincianbelanja }}</td>
+                  <td></td>
+                  <td></td>
+                  <td></td>
+                </tr>
+              </template>
+            </template>
+          </template>
+          <template v-if="item?.bank_kas?.length">
+            <template v-for="it in item?.bank_kas" :key="it">
+              <tr>
+                <td colspan="2"></td>
+                <td class="text-left q-pl-sm q-pr-sm" style="font-size: 11px"> {{ it?.nonpd }}</td>
+                <td class="text-left q-pl-sm q-pr-sm" style="font-size: 11px">{{ it?.uraianNPD }} </td>
+                <td class="text-right q-pl-sm q-pr-sm" style="font-size: 11px">
+                  {{ formattanpaRp(0) }}
+                </td>
+                <td class="text-right q-pl-sm q-pr-sm" style="font-size: 11px">
+                  {{ formattanpaRp(it?.nilai) }}
+                </td>
+                <td></td>
+              </tr>
+            </template>
+          </template>
+          <template v-if="item?.kas_bank?.length">
+            <template v-for="it in item?.kas_bank" :key="it">
+              <tr>
+                <td colspan="2"></td>
+                <td class="text-left q-pl-sm q-pr-sm" style="font-size: 11px"> {{ it?.nonpd }}</td>
+                <td class="text-left q-pl-sm q-pr-sm" style="font-size: 11px">{{ it?.uraianNPD }} </td>
+                <td class="text-right q-pl-sm q-pr-sm" style="font-size: 11px">
+                  {{ formattanpaRp(it?.nilai) }}
+                </td>
+                <td class="text-right q-pl-sm q-pr-sm" style="font-size: 11px">
+                  {{ formattanpaRp(0) }}
+                </td>
+                <td></td>
+              </tr>
+            </template>
+          </template>
+        </template>
+        <tr>
+          <td colspan="4" class="text-bold text-center">TOTAL</td>
+          <td class="text-right text-weight-bolder q-pl-sm q-pr-sm">
+            {{ formattanpaRp(totaldebit()) }}
+          </td>
+          <td class="text-right text-weight-bolder q-pl-sm q-pr-sm">
+            {{ formattanpaRp(totalkredit()) }}
+          </td>
+          <td class="text-right text-weight-bolder q-pl-sm q-pr-sm">
+            {{ formattanpaRp(totalsaldo()) }}
+          </td>
+        </tr>
+      </tbody>
+    </q-markup-table>
+  </div>
+</template>
+
+<script setup>
+import { formattanpaRp } from 'src/modules/formatter';
+import { useLaporanBukuBankStore } from 'src/stores/siasik/laporan/buku_pembantu/bukubank';
+import { ref } from 'vue';
+
+const separator = ref('cell')
+const store = useLaporanBukuBankStore()
+function totaldebit() {
+  const debit = store.hasilArray
+  // console.log("njaaias", debit);
+  const totaldebit = debit?.length
+    ? debit?.map((x) => x.penerimaan).reduce((x, y) => x + y, 0)
+    : 0
+  // console.log("debit", totaldebit);
+  return totaldebit
+}
+function totalkredit() {
+  const kredit = store.hasilArray
+  // console.log("njaaias", debit);
+  const totalkredit = kredit?.length
+    ? kredit?.map((x) => x.pengeluaran).reduce((x, y) => x + y, 0)
+    : 0
+  // console.log("debit", totaldebit);
+  return totalkredit
+}
+
+function totalsaldo() {
+  const saldo = store.hasilArray
+  // console.log("njaaias", debit);
+  const totalsaldo = saldo?.length
+    ? saldo?.map((x) => x.penerimaan).reduce((x, y) => x + y, 0) -
+    saldo?.map((x) => x.pengeluaran).reduce((x, y) => x + y, 0)
+    : 0
+  // console.log("debit", totaldebit);
+  return totalsaldo
+}
+
+</script>
+<style scoped>
+/* Mengatur warna garis pada seluruh tabel termasuk garis luar */
+.custom-table {
+  border-color: #555555 !important;
+}
+
+/* Menargetkan tabel di dalam komponen q-markup-table */
+.custom-table table {
+  border-color: #555555 !important;
+}
+
+/* Mengatur warna garis pada sel header */
+.custom-table th {
+  border-color: #555555 !important;
+  font-weight: bold;
+}
+
+/* Mengatur warna garis pada sel data */
+.custom-table td {
+  border-color: #555555 !important;
+}
+
+/* Pastikan garis tidak dobel */
+.custom-table table {
+  border-collapse: collapse;
+}
+
+.custom-table thead tr {
+  background: #ffed86;
+  border-color: #555555 !important;
+}
+</style>

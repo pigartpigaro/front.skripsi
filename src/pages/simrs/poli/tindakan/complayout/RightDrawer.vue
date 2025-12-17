@@ -1,0 +1,2452 @@
+<template>
+  <div class="column full-height">
+    <div v-if="!noHeader" class="col-auto">
+      <q-bar>
+        <q-btn flat rounded padding="xs" size="xs" icon="icon-mat-close" @click="emits('close')" />
+        <q-space />
+        <div>History Pasien</div>
+      </q-bar>
+    </div>
+    <div class="col full-height">
+      <div class="col-auto bg-red">
+        <q-tabs v-model="store.tab" no-caps inline-label class="bg-primary text-white shadow-2" align="left" dense
+          active-color="yellow" active-bg-color="dark">
+          <q-tab v-for="(item, i) in store.tabs" :key="i" :name="item" :label="item" />
+        </q-tabs>
+      </div>
+      <div v-if="store.loading" class="col full-height" style="overflow: hidden;">
+        <app-loading />
+      </div>
+      <div v-if="!store.loading" class="col full-height" style="overflow: hidden;">
+        <q-tab-panels v-model="store.tab" animated class="full-height">
+          <q-tab-panel name="Rawat Jalan" class="full-height q-pa-none">
+            <q-scroll-area style="height:calc(100% - 50px)">
+              <q-list v-if="store?.items?.length" bordered separator>
+                <div v-if="filteredItems?.length">
+                  <q-expansion-item v-for="(item, i) in filteredItems" :key="i" expand-separator
+                    :label="item?.ruangan + ' | ' + item?.rs1 + ' | DPJP : ' + item?.dpjp"
+                    :caption="tanggal(item?.tanggal)" @click="store.getEresep(item, store.tab)">
+                    <q-card dark>
+                      <q-separator />
+                      <q-card-section v-if="item?.loading" class="q-pa-none">
+                        <!-- <q-card-section class="q-pa-none"> -->
+                        <q-bar class="bg-primary">
+                          <div>Sedang Mengambil data detail <q-spinner-dots color="white" size="xs" /></div>
+                        </q-bar>
+                      </q-card-section>
+                      <q-card-section class="q-pa-none">
+                        <div v-if="item?.anamnesis?.length">
+                          <q-bar class="bg-accent">
+                            <div>ANAMNESIS</div>
+                          </q-bar>
+                          <q-list dark>
+                            <q-item v-for="(anamnesis, a) in item?.anamnesis" :key="a">
+                              <q-item-section>
+                                <q-item-label>Keluhan Utama</q-item-label>
+                                <q-item-label caption lines="5">
+                                  {{ anamnesis?.rs4 }}
+                                </q-item-label>
+                                <q-item-label>Riwayat Penyakit (Sekarang)</q-item-label>
+                                <q-item-label caption lines="5">
+                                  {{ anamnesis?.riwayatpenyakitsekarang }}
+                                </q-item-label>
+                                <q-item-label>Riwayat Penyakit</q-item-label>
+                                <q-item-label caption lines="5">
+                                  {{ anamnesis?.riwayatpenyakit }}
+                                </q-item-label>
+                                <q-item-label>Riwayat Alergi</q-item-label>
+                                <q-item-label caption lines="5">
+                                  {{ anamnesis?.riwayatalergi }}
+                                </q-item-label>
+                                <q-item-label>Reaksi berupa</q-item-label>
+                                <q-item-label caption lines="5">
+                                  {{ anamnesis?.keteranganalergi }}
+                                </q-item-label>
+                                <q-item-label>Riwayat Pengobatan</q-item-label>
+                                <q-item-label caption lines="7">
+                                  {{ anamnesis?.riwayatpengobatan }}
+                                </q-item-label>
+                                <q-item-label>Penurunan Berat Badan</q-item-label>
+                                <q-item-label caption lines="5">
+                                  {{ anamnesis?.skreeninggizi == 0 ? "Tidak" : "Ya" }}
+                                </q-item-label>
+                                <q-item-label>Asupan Makan Berkurang</q-item-label>
+                                <q-item-label caption lines="5">
+                                  {{ anamnesis?.asupanmakan == 0 ? "Tidak" : "Ya" }}
+                                </q-item-label>
+                                <q-item-label>Kondisi Khusus</q-item-label>
+                                <q-item-label caption lines="5">
+                                  {{ anamnesis?.kondisikhusus }}
+                                </q-item-label>
+                                <q-item-label>Score Nyeri</q-item-label>
+                                <q-item-label caption lines="5">
+                                  {{ anamnesis?.scorenyeri }} ( {{ anamnesis?.keteranganscorenyeri }} )
+                                </q-item-label>
+                              </q-item-section>
+                            </q-item>
+                          </q-list>
+                        </div>
+                        <div v-else>
+                          <q-bar class="bg-accent">
+                            <div>ANAMNESA tidak ada</div>
+                          </q-bar>
+                        </div>
+                      </q-card-section>
+                      <q-card-section v-if="item?.pemeriksaanfisik?.length" flat bordered square dark />
+                      <q-list separator>
+                        <q-bar class="bg-accent">
+                          <div>PEMERIKSAAN FISIK</div>
+                        </q-bar>
+                        <!-- <transition-group name="list"> -->
+                        <div v-for="(pemeriksaanfisik, f) in item?.pemeriksaanfisik" :key="f">
+                          <!-- NADI-->
+                          <q-item v-ripple class="q-pa-xs list-move" dark clickable>
+                            <q-item-section avatar>
+                              <q-icon :color="nadi(pemeriksaanfisik?.rs4).color" name="icon-my-monitor_heart"
+                                size="lg" />
+                            </q-item-section>
+                            <q-item-section class="q-pa-xs">
+                              <q-item-label :class="`text-h4 text-${nadi(pemeriksaanfisik?.rs4).color}`">
+                                {{ pemeriksaanfisik?.rs4 }}
+                              </q-item-label>
+                            </q-item-section>
+                            <q-item-section side>
+                              <q-item-label class="text-right f-10">
+                                N (HR)
+                              </q-item-label>
+                              <q-item-label class="text-right f-10">
+                                {{ nadi(pemeriksaanfisik?.rs4).res }}
+                              </q-item-label>
+                            </q-item-section>
+                          </q-item>
+                          <q-separator dark inset />
+                          <q-item v-ripple class="q-pa-xs list-move" dark clickable>
+                            <q-item-section avatar>
+                              <q-icon color="white" name="icon-my-local_hospital" size="lg" />
+                            </q-item-section>
+                            <q-item-section class="q-pa-xs">
+                              <q-item-label :class="`text-h4 text-white`">
+                                {{ pemeriksaanfisik?.pernapasan }}
+                              </q-item-label>
+                            </q-item-section>
+                            <q-item-section side>
+                              <q-item-label class="text-right f-10">
+                                RR
+                              </q-item-label>
+                              <q-item-label class="text-right f-10">
+                                -
+                              </q-item-label>
+                            </q-item-section>
+                          </q-item>
+                          <q-separator dark inset />
+                          <q-item v-ripple class="q-pa-xs list-move" dark clickable>
+                            <q-item-section avatar>
+                              <q-icon :color="suhu(pemeriksaanfisik?.suhutubuh).color"
+                                name="icon-my-standing-human-body-silhouette-svgrepo-com" size="lg" />
+                            </q-item-section>
+                            <q-item-section class="q-pa-xs">
+                              <q-item-label :class="`text-h4 text-${suhu(item?.suhutubuh).color}`">
+                                {{ pemeriksaanfisik?.suhutubuh }}
+                              </q-item-label>
+                            </q-item-section>
+                            <q-item-section side>
+                              <q-item-label class="text-right f-10">
+                                SUHU TUBUH
+                              </q-item-label>
+                              <q-item-label class="text-right f-10">
+                                {{ suhu(pemeriksaanfisik?.suhutubuh).res }}
+                              </q-item-label>
+                            </q-item-section>
+                          </q-item>
+                          <q-separator dark inset />
+                          <q-item v-ripple class="q-pa-xs list-move" dark clickable>
+                            <q-item-section class="q-pa-xs">
+                              <q-item-label :class="`text-h5 `">
+                                <span :class="`${tekananDarah(pemeriksaanfisik?.sistole).color}`">{{
+                                  pemeriksaanfisik?.sistole }}</span> /
+                                <span :class="`${tekananDarahDias(pemeriksaanfisik?.diatole).color}`">{{
+                                  pemeriksaanfisik?.diastole }}</span>
+                              </q-item-label>
+                              <q-item-label class="f-10">
+                                <span :class="`${tekananDarah(pemeriksaanfisik?.sistole).color}`">{{
+                                  tekananDarah(pemeriksaanfisik?.sistole).res }}</span> /
+                                <span :class="`${tekananDarahDias(pemeriksaanfisik?.diastole).color}`">{{
+                                  tekananDarahDias(pemeriksaanfisik?.diastole).res }}</span>
+                              </q-item-label>
+                            </q-item-section>
+                            <q-item-section side>
+                              <q-item-label class="text-right f-10">
+                                TD sys / dias
+                              </q-item-label>
+                            </q-item-section>
+                          </q-item>
+                          <!-- STATUS -->
+                          <q-separator dark inset />
+                          <q-item v-ripple class="q-pa-xs list-move" dark clickable>
+                            <q-item-section class="q-pa-xs">
+                              <q-item-label lines="2">
+                                T Kesadaran : <em>{{ getKesadaran(pemeriksaanfisik?.tingkatkesadaran) ?? '-' }}</em>
+                              </q-item-label>
+                              <q-item-label lines="2">
+                                Status Psikologis : <em>{{ pemeriksaanfisik?.statuspsikologis ?? '-' }}</em>
+                              </q-item-label>
+                              <q-item-label lines="2">
+                                Ekonomi : <em>{{ pemeriksaanfisik?.sosialekonomi ?? '-' }}</em>
+                              </q-item-label>
+                              <q-item-label lines="2">
+                                Spiritual : <em>{{ pemeriksaanfisik?.spiritual ?? '-' }}</em>
+                              </q-item-label>
+                              <q-item-label lines="2">
+                                kesadaran : <em>{{ pemeriksaanfisik?.kesadaran ?? '-' }}</em>
+                              </q-item-label>
+                            </q-item-section>
+                          </q-item>
+
+                          <!-- KHUSUS PARU POL018-->
+                          <q-separator dark inset />
+                          <q-item v-ripple class="q-pa-xs list-move" dark clickable>
+                            <q-item-section class="q-pa-xs">
+                              <q-item-label lines="2">
+                                Inspeksi : <em>{{ pemeriksaanfisik?.inspeksi ?? '-' }}</em>
+                              </q-item-label>
+                              <q-item-label lines="2">
+                                Palpasi : <em>{{ pemeriksaanfisik?.palpasi ?? '-' }}</em>
+                              </q-item-label>
+                              <q-item-label lines="2">
+                                Perkusi Dada Kanan : <em>{{ pemeriksaanfisik?.perkusidadakanan ?? '-' }}</em>
+                              </q-item-label>
+                              <q-item-label lines="2">
+                                Perkusi Dada Kiri : <em>{{ pemeriksaanfisik?.perkusidadakiri ?? '-' }}</em>
+                              </q-item-label>
+                              <q-item-label lines="2">
+                                Suara Nafas Dasar : <em>{{ pemeriksaanfisik?.auskultasisuaradasar ?? '-' }}</em>
+                              </q-item-label>
+                              <q-item-label lines="2">
+                                Suara Nafas Tambahan (Kanan) : <em>{{
+                                  pemeriksaanfisik?.auskultasisuaratambahankanan ?? '-' }}</em>
+                              </q-item-label>
+                              <q-item-label lines="2">
+                                Suara Nafas Tambahan (Kiri) : <em>{{ pemeriksaanfisik?.auskultasisuaratambahankiri ??
+                                  '-'
+                                }}</em>
+                              </q-item-label>
+                            </q-item-section>
+                          </q-item>
+                        </div>
+                        <!-- </transition-group> -->
+                        <q-card-section class="q-pa-none" flat bordered square dark>
+                          <q-bar class="bg-accent">
+                            <div>DIAGNOSA DPJP (memo dokter)</div>
+                          </q-bar>
+                          <q-list dark separator>
+                            <q-item>
+                              <q-item-section>
+                                <q-item-label>{{ item?.memo }} </q-item-label>
+
+                              </q-item-section>
+                            </q-item>
+                          </q-list>
+                        </q-card-section>
+
+                        <q-separator />
+                        <q-card-section v-if="item?.diagnosa?.length" class="q-pa-none" flat bordered square dark>
+                          <q-bar class="bg-accent">
+                            <div>DIAGNOSA</div>
+                          </q-bar>
+                          <q-list dark separator>
+                            <q-item v-for="(diagnosa, d) in item?.diagnosa" :key="d" v-ripple clickable>
+                              <q-item-section>
+                                <q-item-label>Kasus = {{ diagnosa?.rs7 }}</q-item-label>
+                                <q-item-label caption lines="2" />
+                                Jenis Diagnosa = {{ diagnosa?.rs4 }}
+                                <q-item-label>
+                                  Diagnosa = {{ diagnosa?.masterdiagnosa?.rs4 }} ( {{ diagnosa?.rs3 }}
+                                  )
+                                </q-item-label>
+                                <q-item-label caption lines="2" />
+                                Keterangan = {{ diagnosa?.rs6 }}
+                              </q-item-section>
+                            </q-item>
+                          </q-list>
+                        </q-card-section>
+                        <q-separator />
+                        <q-card-section v-if="item?.tindakan?.length" class="q-pa-none" flat bordered square dark>
+                          <q-bar class="bg-accent">
+                            <div>TINDAKAN</div>
+                          </q-bar>
+                          <q-list dark separator>
+                            <q-item v-for="(tindakan, tin) in item?.tindakan" :key="tin" v-ripple clickable>
+                              <q-item-section>
+                                <q-item-label caption lines="2" />
+                                {{ tin + 1 }}. {{ tindakan?.mastertindakan?.rs2 }}
+                                <q-item-label caption lines="10" />
+                                keterangan = {{ tindakan?.sambungan?.ket ?? tindakan?.rs20 }}
+                                <div v-if="tindakan?.gambardokumens?.length > 0" class="image-row">
+                                  <div v-for="(image, index) in tindakan?.gambardokumens" :key="index"
+                                    class="image-container">
+                                    <q-img :src="pathImg + image.url" class="image">
+                                      <div class="absolute-bottom">
+                                        <div class="column items-center justify-between">
+                                          <q-btn class="gt-xs" size="md" color="yellow" flat dense round
+                                            icon="icon-mat-visibility" :href="pathImg + image?.url" target="_blank" />
+                                        </div>
+                                      </div>
+                                    </q-img>
+                                  </div>
+                                </div>
+                              </q-item-section>
+                            </q-item>
+                          </q-list>
+                        </q-card-section>
+                        <q-separator />
+
+                        <q-card-section v-if="item?.laborat?.length || item?.laborats?.length" class="q-pa-none">
+                          <q-bar class="bg-accent">
+                            PEMERIKSAAN LABORAT
+                          </q-bar>
+                          <q-markup-table separator="vertical" flat bordered dense dark>
+                            <thead>
+                              <tr>
+                                <th class="text-left">
+                                  Nama Pemeriksaan
+                                </th>
+                                <th class="text-left">
+                                  Kelompok Pemeriksaan
+                                </th>
+                                <th class="text-left">
+                                  Satuan Normal
+                                </th>
+                                <th class="text-right">
+                                  Hasil
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr v-for="(lab, l) in item?.laborat" :key="l" v-ripple clickable>
+                                <td class="text-left ellipsis" style="max-width: 250px;">
+                                  {{ lab?.pemeriksaanlab?.rs2 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ lab?.pemeriksaanlab?.rs21 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ lab?.pemeriksaanlab?.rs22 }}
+                                </td>
+                                <td v-if="lab?.rs27 === ''" style="max-width: 150px;">
+                                  <q-item-label class="text-right">
+                                    {{ lab?.rs21 }}
+                                  </q-item-label>
+                                </td>
+                                <td v-else style="max-width: 150px;">
+                                  <q-item-label class="text-right">
+                                    {{ lab?.rs21 }} ({{ lab?.rs27 }})
+                                  </q-item-label>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </q-markup-table>
+                        </q-card-section>
+                        <q-separator />
+
+                        <q-card-section v-if="item?.transradiologi?.length && item?.hasilradiologi?.length"
+                          class="q-pa-none" flat bordered square dark>
+                          <q-bar class="bg-accent">
+                            <div>RADIOLOGI</div>
+                          </q-bar>
+                          <q-list dark separator>
+                            <q-item v-for="(radiologi, r) in item?.transradiologi" :key="r" v-ripple clickable>
+                              <q-item-section>
+                                <q-item-label>Pemeriksaan = {{ radiologi?.relmasterpemeriksaan?.rs2 }}</q-item-label>
+                                <q-item-label>Jenis Pemeriksaan Radiologi = {{ radiologi?.relmasterpemeriksaan?.rs3
+                                }}</q-item-label>
+                                <q-item-label>Hasil Pemeriksaan Radiologi = {{ item?.hasilradiologi[r]?.rs3
+                                }}</q-item-label>
+                              </q-item-section>
+                            </q-item>
+                          </q-list>
+                        </q-card-section>
+
+                        <q-separator />
+                        <q-card-section v-if="item?.kamaroperasi?.length" class="q-pa-none">
+                          <q-bar class="bg-accent">
+                            TINDAKAN OPERASI
+                          </q-bar>
+                          <q-markup-table separator="vertical" flat bordered dense dark>
+                            <thead>
+                              <tr>
+                                <th class="text-left">
+                                  Tanggal
+                                </th>
+                                <th class="text-right">
+                                  Diagnosa
+                                </th>
+                                <th class="text-right">
+                                  Tindakan Operasi
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr v-for="(operasi, l) in item?.kamaroperasi" :key="l" v-ripple clickable>
+                                <td class="text-left ellipsis" style="max-width: 250px;">
+                                  {{ operasi?.rs3 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ operasi?.mastertindakanoperasi?.rs2 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ operasi?.mastertindakanoperasi?.rs4 }}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </q-markup-table>
+                        </q-card-section>
+
+                        <q-separator />
+                        <q-card-section v-if="item?.apotekrajal?.length
+                          || item?.apotekrajalpolilalu?.length
+                          || item?.apotekracikanrajal?.length
+                          || item?.apotekracikanrajallalu?.length
+                          || item?.apotekranap?.length
+                          || item?.apotekranaplalu?.length
+                          || item?.apotekranapracikanheder?.length
+                          || item?.apotekranapracikanhederlalu?.length" class="q-pa-none">
+                          <q-bar class="bg-accent">
+                            PEMBERIAN OBAT
+                          </q-bar>
+                          <q-markup-table separator="vertical" flat bordered dense dark>
+                            <thead>
+                              <tr>
+                                <th class="text-left">
+                                  Tanggal
+                                </th>
+                                <th class="text-right">
+                                  Obat
+                                </th>
+                                <th class="text-right">
+                                  Signa
+                                </th>
+                                <th class="text-right">
+                                  Jumlah
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr v-for="(apotekrajal, wew) in item?.apotekrajal" :key="wew">
+                                <td class="text-left ellipsis" style="max-width: 250px;">
+                                  {{ apotekrajal?.rs3 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekrajal.masterobat?.rs2 }}
+                                </td>
+                                <td v-if="apotekrajal?.rs27?.length > 0 && apotekrajal?.rs28?.length > 0"
+                                  class="text-right" style="max-width: 250px;">
+                                  {{ getInteger(apotekrajal?.rs27) + ' X ' + getInteger(apotekrajal?.rs28) }}
+                                </td>
+                                <td v-else class="text-right" style="max-width: 250px;">
+                                  {{ '-' }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekrajal?.rs8 }}
+                                </td>
+                              </tr>
+                              <tr v-for="(apotekrajalpolilalu, lll) in item?.apotekrajalpolilalu" :key="lll">
+                                <td class="text-left ellipsis" style="max-width: 250px;">
+                                  {{ apotekrajalpolilalu?.rs3 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekrajalpolilalu.masterobat?.rs2 }}
+                                </td>
+                                <td
+                                  v-if="apotekrajalpolilalu?.rs27?.length > 0 && apotekrajalpolilalu?.rs28?.length > 0"
+                                  class="text-right" style="max-width: 250px;">
+                                  {{ getInteger(apotekrajalpolilalu?.rs27) + ' X ' +
+                                    getInteger(apotekrajalpolilalu?.rs28) }}
+                                </td>
+                                <td v-else class="text-right" style="max-width: 250px;">
+                                  {{ '-' }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekrajalpolilalu?.rs8 }}
+                                </td>
+                              </tr>
+                              <tr v-for="(apotekracikanrajal, llll) in item?.apotekracikanrajal" :key="llll">
+                                <td class="text-left ellipsis" style="max-width: 250px;">
+                                  {{ apotekracikanrajal?.rs3 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekracikanrajal.masterobat?.rs2 }}
+                                </td>
+                                <td class="text-left ellipsis" style="max-width: 250px;">
+                                  {{ '-' }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekracikanrajal?.rs5 }}
+                                </td>
+                              </tr>
+                              <tr v-for="(apotekracikanrajallalu, llll) in item?.apotekracikanrajallalu" :key="llll">
+                                <td class="text-left ellipsis" style="max-width: 250px;">
+                                  {{ apotekracikanrajallalu?.rs3 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekracikanrajallalu.masterobat?.rs2 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ '-' }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekracikanrajallalu?.rs5 }}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </q-markup-table>
+                        </q-card-section>
+
+                        <q-separator />
+
+                        <q-card-section v-if="item?.newapotekrajal?.length" class="q-pa-none">
+                          <q-bar class="bg-accent">
+                            PEMBERIAN OBAT E-RESEP
+                          </q-bar>
+                          <template v-for="(obats, i) in item?.newapotekrajal" :key="i">
+                            <div v-if="obats?.permintaanresep?.length" class="q-pa-sm">
+                              <div>
+                                <q-item-label>
+                                  Riwayat Obat Tanggal : <em>{{ humanDate(obats?.tgl) }}</em>
+                                </q-item-label>
+                                <q-item-label class="q-mb-sm">
+                                  <div v-if="obats?.dokter?.nama?.length">
+                                    <span>Petugas : <em>{{ obats?.dokter?.nama }}</em></span>
+                                  </div>
+                                  <div v-else>
+                                    <span>Petugas : <em>-</em></span>
+                                  </div>
+                                </q-item-label>
+                              </div>
+                              <div class="row items-center q-mb-sm">
+                                <div class="col">
+                                  <div class="text-weight-bold">
+                                    Non Racikan | {{ obats?.tiperesep }} | {{ obats?.noresep }}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <q-list separator bordered style="border-color: white;">
+                                <q-item v-for="(rinc, j) in obats?.rincian" :key="rinc">
+                                  <q-item-section style="width: 20%;">
+                                    <div class="row">
+                                      <div class="col-1">
+                                        {{ j + 1 }}
+                                      </div>
+                                      <div class="col-11">
+                                        <div class="row text-weight-bold">
+                                          {{ rinc?.mobat?.nama_obat }}
+                                        </div>
+                                        <div class="row text-italic f-10">
+                                          {{ rinc?.kdobat }}
+                                        </div>
+                                        <div class="row text-weight-bold f-10">
+                                          ( {{ rinc?.mobat?.satuan_k }} )
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </q-item-section>
+                                  <q-item-section side style="width:60%">
+                                    <div class="row items-center full-width">
+                                      <div class="col-12">
+                                        <div class="row q-mt-sm">
+                                          <div class="col-6">
+                                            Aturan :
+                                          </div>
+                                          <div class="col-4">
+                                            {{ rinc?.aturan }}
+                                          </div>
+                                        </div>
+                                        <div class="row q-mt-sm">
+                                          <div class="col-6">
+                                            Jumlah Obat :
+                                          </div>
+                                          <div class="col-4">
+                                            {{ rinc?.jumlah }}
+                                          </div>
+                                        </div>
+                                        <div class="row q-mt-sm">
+                                          <div class="col-6">
+                                            Konsumsi :
+                                          </div>
+                                          <div class="col-4">
+                                            {{ rinc?.konsumsi }} hari
+                                          </div>
+                                        </div>
+                                        <div class="row q-mt-sm">
+                                          <div class="col-6">
+                                            keterangan :
+                                          </div>
+                                          <div class="col-4">
+                                            {{ rinc?.keterangan }}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </q-item-section>
+                                </q-item>
+                              </q-list>
+                            </div>
+
+                            <div v-if="obats?.permintaanracikan?.length" class="q-mt-sm q-pa-sm">
+
+                              <div class="row items-center">
+                                <div class="col">
+                                  <div class="text-weight-bold" v-if="obats?.poli">
+                                    Racikan | {{ obats?.tiperesep }} | {{ obats?.noresep }} ({{ obats?.poli?.rs2 }}) |
+                                    {{ obats?.sistembayar?.rs2 }}
+                                  </div>
+                                  <div class="text-weight-bold" v-else>
+                                    Racikan | {{ obats?.tiperesep }} | {{ obats?.noresep }} ({{
+                                      obats?.ruanganranap?.rs2 }}) | {{ obats?.sistembayar?.rs2 }}
+                                  </div>
+                                </div>
+                              </div>
+                              <div v-for="(rac, r) in groupingRacikan(obats?.permintaanracikan, obats)" :key="r">
+
+                                <div>
+                                  <div class="row items-center">
+                                    <div class="col-shrink q-mr-xs">
+                                      {{ rac?.namaracikan }}
+                                    </div>
+                                    <div class="col-shrink q-mr-xs">
+                                      <q-chip square class="f-10" color="primary" text-color="white" outline>
+                                        {{ rac?.tiperacikan }}
+                                      </q-chip>
+                                    </div>
+                                    <div class="col-shrink q-mr-xs text-purple text-weight-bold">
+                                      Jumlah {{ rac?.jumlahdibutuhkan }}
+                                    </div>
+                                    <div class="col-shrink q-mr-xs">
+                                      ({{ rac?.satuan_racik }})
+                                    </div>
+                                    <div class="col-shrink q-mr-xs text-italic">
+                                      {{ rac.aturan }}
+                                    </div>
+
+                                    <div class="col-shrink q-mr-xs">
+                                      | Keterangan : {{ rac?.keterangan }}
+                                    </div>
+                                  </div>
+                                </div>
+                                <q-list separator bordered style="border-color: white;">
+
+                                  <q-item v-for="(rincrac, rc) in rac?.rincian" :key="rc">
+                                    <q-item-section style="width: 20%;">
+                                      <div class="row text-weight-bold">
+                                        {{ rincrac?.mobat?.nama_obat }}
+                                      </div>
+                                      <div class="row text-italic f-10">
+                                        {{ rincrac?.kdobat }}
+                                      </div>
+                                      <div class="row text-weight-bold f-10">
+                                        ( {{ rincrac?.mobat?.satuan_k }} )
+                                      </div>
+                                    </q-item-section>
+                                    <q-item-section side style="width:60%">
+                                      <div class="row full-width">
+                                        <div class="col-12">
+                                          <div v-if="rincrac?.tiperacikan === 'DTD'" class="col">
+                                            <div class="row q-mt-sm">
+                                              <div class="col-6">
+                                                Dosis Resep :
+                                              </div>
+                                              <div class="col-4">
+                                                {{ rincrac?.dosismaksimum }}
+                                              </div>
+                                            </div>
+                                            <div class="row q-mt-sm">
+                                              <div class="col-6">
+                                                Dosis Obat :
+                                              </div>
+                                              <div class="col-4">
+                                                {{ rincrac?.mobat?.kekuatan_dosis }}
+                                              </div>
+                                            </div>
+                                            <div class="row q-mt-sm">
+                                              <div class="col-6">
+                                                Jumlah Resep :
+                                              </div>
+                                              <div class="col-4">
+                                                {{ rincrac?.jumlah }}
+                                              </div>
+                                            </div>
+                                            <div class="row q-mt-sm">
+                                              <div class="col-6">
+                                                Keterangan :
+                                              </div>
+                                              <div class="col-4">
+                                                {{ rincrac?.keteranganx }}
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div v-else class="col">
+                                            <div class="row q-mt-sm">
+                                              <div class="col-6">
+                                                Jumlah Resep :
+                                              </div>
+                                              <div class="col-4">
+                                                {{ jumlahResep(rincrac, rac) }}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </q-item-section>
+                                  </q-item>
+                                </q-list>
+                              </div>
+                            </div>
+                            <hr style="border-color: grey">
+
+                          </template>
+
+                        </q-card-section>
+
+                        <q-card-section v-if="item?.dokumenluar?.length" class="q-pa-none" flat bordered square dark>
+                          <q-bar class="bg-accent">
+                            <div>DOKUMEN</div>
+                          </q-bar>
+                          <q-list dark separator>
+                            <div class="image-row">
+                              <div v-for="(image, index) in item?.dokumenluar" :key="index" class="image-container">
+                                <q-img :src="pathImg + image.url" class="image">
+                                  <div class="absolute-bottom">
+                                    <div class="column items-center justify-between">
+                                      <q-btn class="gt-xs" size="md" color="yellow" flat dense round
+                                        icon="icon-mat-visibility" :href="pathImg + image?.url" target="_blank" />
+                                    </div>
+                                    <div>Dokumen : {{ image?.nama }}</div>
+                                    <div>Diinput Oleh : {{ image?.pegawai?.nama }}</div>
+                                  </div>
+                                </q-img>
+                              </div>
+                            </div>
+                          </q-list>
+                        </q-card-section>
+                      </q-list>
+                    </q-card>
+                    <!-- <q-card v-if="item?.praanastesi?.length">
+                      <q-card-section class="q-pa-none">
+                        <q-bar class="bg-accent text-white">
+                          PRA ANESTESI
+                        </q-bar>
+                        <div class="full-width">
+                          <PraAnestesi :pasien="item" :history="true" />
+                        </div>
+                      </q-card-section>
+                    </q-card> -->
+                  </q-expansion-item>
+                </div>
+                <div v-else class="column flex-center" style="min-height: 860px;">
+                  MAAF ... DATA HISTORY PASIEN RAWAT JALAN BELUM ADA
+                </div>
+              </q-list>
+            </q-scroll-area>
+          </q-tab-panel>
+          <q-tab-panel name="Rawat Inap" class="full-height q-pa-none">
+            <q-scroll-area style="height:calc(100% - 50px)">
+              <q-list v-if="store?.items?.length" bordered separator>
+                <div v-if="filteredItems?.length">
+                  <q-expansion-item v-for="(item, i) in filteredItems" :key="i" expand-separator
+                    :label="item?.ruangan + ' | ' + item?.rs1 + ' | DPJP : ' + item?.dpjp"
+                    :caption="tanggal(item?.tanggal)" @click="store.getEresep(item, store.tab)">
+                    <q-card dark>
+                      <q-separator />
+                      <q-card-section v-if="item?.loading" class="q-pa-none">
+                        <!-- <q-card-section class="q-pa-none"> -->
+                        <q-bar class="bg-primary">
+                          <div>Sedang Mengambil data detail <q-spinner-dots color="white" size="xs" /></div>
+                        </q-bar>
+                      </q-card-section>
+                      <q-card-section class="q-pa-none">
+                        <div v-if="item?.anamnesis?.length">
+                          <q-bar class="bg-accent">
+                            <div>ANAMNESIS</div>
+                          </q-bar>
+                          <q-list dark>
+                            <q-item v-for="(anamnesis, a) in item?.anamnesis?.filter((v) => v?.awal === '1')" :key="a">
+                              <q-item-section>
+                                <q-item-label>Keluhan Utama</q-item-label>
+                                <q-item-label caption lines="2">
+                                  {{ anamnesis?.rs4 }}
+                                </q-item-label>
+                                <q-item-label>Riwayat Penyakit (Sekarang)</q-item-label>
+                                <q-item-label caption lines="2">
+                                  {{ anamnesis?.riwayatpenyakitsekarang }}
+                                </q-item-label>
+                                <q-item-label>Riwayat Penyakit</q-item-label>
+                                <q-item-label caption lines="2">
+                                  {{ anamnesis?.riwayatpenyakit }}
+                                </q-item-label>
+                                <q-item-label>Riwayat Alergi</q-item-label>
+                                <q-item-label caption lines="2">
+                                  {{ anamnesis?.riwayatalergi }}
+                                </q-item-label>
+                                <q-item-label>Reaksi berupa</q-item-label>
+                                <q-item-label caption lines="2">
+                                  {{ anamnesis?.keteranganalergi }}
+                                </q-item-label>
+                                <q-item-label>Riwayat Pengobatan</q-item-label>
+                                <q-item-label caption lines="2">
+                                  {{ anamnesis?.riwayatpengobatan }}
+                                </q-item-label>
+                                <q-item-label>Penurunan Berat Badan</q-item-label>
+                                <q-item-label caption lines="2">
+                                  {{ anamnesis?.skreeninggizi == 0 ? "Tidak" : "Ya" }}
+                                </q-item-label>
+                                <q-item-label>Asupan Makan Berkurang</q-item-label>
+                                <q-item-label caption lines="2">
+                                  {{ anamnesis?.asupanmakan == 0 ? "Tidak" : "Ya" }}
+                                </q-item-label>
+                                <q-item-label>Kondisi Khusus</q-item-label>
+                                <q-item-label caption lines="2">
+                                  {{ anamnesis?.kondisikhusus }}
+                                </q-item-label>
+                                <q-item-label>Score Nyeri</q-item-label>
+                                <q-item-label caption lines="2">
+                                  {{ anamnesis?.scorenyeri }} ( {{ anamnesis?.keteranganscorenyeri }} )
+                                </q-item-label>
+                              </q-item-section>
+                            </q-item>
+                          </q-list>
+                        </div>
+                        <div v-else>
+                          <q-bar class="bg-accent">
+                            <div>ANAMNESA tidak ada</div>
+                          </q-bar>
+                        </div>
+                      </q-card-section>
+                      <q-card-section v-if="item?.pemeriksaanfisik?.length" flat bordered square dark>
+                        <q-list separator>
+                          <q-bar class="bg-accent">
+                            <div>PEMERIKSAAN FISIK</div>
+                          </q-bar>
+                          <!-- <transition-group name="list"> -->
+                          <div v-for="(pemeriksaanfisik, f) in item?.pemeriksaanfisik" :key="f">
+                            <!-- NADI-->
+                            <q-item v-ripple class="q-pa-xs list-move" dark clickable>
+                              <q-item-section avatar>
+                                <q-icon :color="nadi(pemeriksaanfisik?.rs4).color" name="icon-my-monitor_heart"
+                                  size="lg" />
+                              </q-item-section>
+                              <q-item-section class="q-pa-xs">
+                                <q-item-label :class="`text-h4 text-${nadi(pemeriksaanfisik?.rs4).color}`">
+                                  {{ pemeriksaanfisik?.rs4 }}
+                                </q-item-label>
+                              </q-item-section>
+                              <q-item-section side>
+                                <q-item-label class="text-right f-10">
+                                  N (HR)
+                                </q-item-label>
+                                <q-item-label class="text-right f-10">
+                                  {{ nadi(pemeriksaanfisik?.rs4).res }}
+                                </q-item-label>
+                              </q-item-section>
+                            </q-item>
+                            <q-separator dark inset />
+                            <q-item v-ripple class="q-pa-xs list-move" dark clickable>
+                              <q-item-section avatar>
+                                <q-icon color="white" name="icon-my-local_hospital" size="lg" />
+                              </q-item-section>
+                              <q-item-section class="q-pa-xs">
+                                <q-item-label :class="`text-h4 text-white`">
+                                  {{ pemeriksaanfisik?.pernapasan }}
+                                </q-item-label>
+                              </q-item-section>
+                              <q-item-section side>
+                                <q-item-label class="text-right f-10">
+                                  RR
+                                </q-item-label>
+                                <q-item-label class="text-right f-10">
+                                  -
+                                </q-item-label>
+                              </q-item-section>
+                            </q-item>
+                            <q-separator dark inset />
+                            <q-item v-ripple class="q-pa-xs list-move" dark clickable>
+                              <q-item-section avatar>
+                                <q-icon :color="suhu(pemeriksaanfisik?.suhutubuh).color"
+                                  name="icon-my-standing-human-body-silhouette-svgrepo-com" size="lg" />
+                              </q-item-section>
+                              <q-item-section class="q-pa-xs">
+                                <q-item-label :class="`text-h4 text-${suhu(item?.suhutubuh).color}`">
+                                  {{ pemeriksaanfisik?.suhutubuh }}
+                                </q-item-label>
+                              </q-item-section>
+                              <q-item-section side>
+                                <q-item-label class="text-right f-10">
+                                  SUHU TUBUH
+                                </q-item-label>
+                                <q-item-label class="text-right f-10">
+                                  {{ suhu(pemeriksaanfisik?.suhutubuh).res }}
+                                </q-item-label>
+                              </q-item-section>
+                            </q-item>
+                            <q-separator dark inset />
+                            <q-item v-ripple class="q-pa-xs list-move" dark clickable>
+                              <q-item-section class="q-pa-xs">
+                                <q-item-label :class="`text-h5 `">
+                                  <span :class="`${tekananDarah(pemeriksaanfisik?.sistole).color}`">{{
+                                    pemeriksaanfisik?.sistole }}</span> /
+                                  <span :class="`${tekananDarahDias(pemeriksaanfisik?.diatole).color}`">{{
+                                    pemeriksaanfisik?.diastole }}</span>
+                                </q-item-label>
+                                <q-item-label class="f-10">
+                                  <span :class="`${tekananDarah(pemeriksaanfisik?.sistole).color}`">{{
+                                    tekananDarah(pemeriksaanfisik?.sistole).res }}</span> /
+                                  <span :class="`${tekananDarahDias(pemeriksaanfisik?.diastole).color}`">{{
+                                    tekananDarahDias(pemeriksaanfisik?.diastole).res }}</span>
+                                </q-item-label>
+                              </q-item-section>
+                              <q-item-section side>
+                                <q-item-label class="text-right f-10">
+                                  TD sys / dias
+                                </q-item-label>
+                              </q-item-section>
+                            </q-item>
+                            <!-- STATUS -->
+                            <q-separator dark inset />
+                            <q-item v-ripple class="q-pa-xs list-move" dark clickable>
+                              <q-item-section class="q-pa-xs">
+                                <q-item-label lines="2">
+                                  T Kesadaran : <em>{{ getKesadaran(pemeriksaanfisik?.tingkatkesadaran) ?? '-' }}</em>
+                                </q-item-label>
+                                <q-item-label lines="2">
+                                  Status Psikologis : <em>{{ pemeriksaanfisik?.statuspsikologis ?? '-' }}</em>
+                                </q-item-label>
+                                <q-item-label lines="2">
+                                  Ekonomi : <em>{{ pemeriksaanfisik?.sosialekonomi ?? '-' }}</em>
+                                </q-item-label>
+                                <q-item-label lines="2">
+                                  Spiritual : <em>{{ pemeriksaanfisik?.spiritual ?? '-' }}</em>
+                                </q-item-label>
+                                <q-item-label lines="2">
+                                  kesadaran : <em>{{ pemeriksaanfisik?.kesadaran ?? '-' }}</em>
+                                </q-item-label>
+                              </q-item-section>
+                            </q-item>
+
+                            <!-- KHUSUS PARU POL018-->
+                            <q-separator dark inset />
+                            <q-item v-ripple class="q-pa-xs list-move" dark clickable>
+                              <q-item-section class="q-pa-xs">
+                                <q-item-label lines="2">
+                                  Inspeksi : <em>{{ pemeriksaanfisik?.inspeksi ?? '-' }}</em>
+                                </q-item-label>
+                                <q-item-label lines="2">
+                                  Palpasi : <em>{{ pemeriksaanfisik?.palpasi ?? '-' }}</em>
+                                </q-item-label>
+                                <q-item-label lines="2">
+                                  Perkusi Dada Kanan : <em>{{ pemeriksaanfisik?.perkusidadakanan ?? '-' }}</em>
+                                </q-item-label>
+                                <q-item-label lines="2">
+                                  Perkusi Dada Kiri : <em>{{ pemeriksaanfisik?.perkusidadakiri ?? '-' }}</em>
+                                </q-item-label>
+                                <q-item-label lines="2">
+                                  Suara Nafas Dasar : <em>{{ pemeriksaanfisik?.auskultasisuaradasar ?? '-' }}</em>
+                                </q-item-label>
+                                <q-item-label lines="2">
+                                  Suara Nafas Tambahan (Kanan) : <em>{{
+                                    pemeriksaanfisik?.auskultasisuaratambahankanan ?? '-' }}</em>
+                                </q-item-label>
+                                <q-item-label lines="2">
+                                  Suara Nafas Tambahan (Kiri) : <em>{{ pemeriksaanfisik?.auskultasisuaratambahankiri ??
+                                    '-'
+                                  }}</em>
+                                </q-item-label>
+                              </q-item-section>
+                            </q-item>
+                          </div>
+                        </q-list>
+                      </q-card-section>
+
+                      <q-card-section class="q-pa-none" flat bordered square dark>
+                        <q-bar class="bg-accent">
+                          <div>DIAGNOSA DPJP (memo dokter)</div>
+                        </q-bar>
+                        <q-list dark separator>
+                          <q-item>
+                            <q-item-section>
+                              <q-item-label>{{ item?.memo }} </q-item-label>
+
+                            </q-item-section>
+                          </q-item>
+                        </q-list>
+                      </q-card-section>
+
+
+                      <!-- </transition-group> -->
+                      <q-card-section v-if="item?.diagnosa?.length" class="q-pa-none" flat bordered square dark>
+                        <q-bar class="bg-accent">
+                          <div>DIAGNOSA</div>
+                        </q-bar>
+                        <q-list dark separator>
+                          <q-item v-for="(diagnosa, d) in item?.diagnosa" :key="d" v-ripple clickable>
+                            <q-item-section>
+                              <!-- <q-item-label>Kasus = {{ diagnosa?.rs7 }}</q-item-label> -->
+                              <q-item-label caption lines="2" />
+                              Jenis Diagnosa = {{ diagnosa?.rs4 }}
+                              <q-item-label>
+                                Diagnosa = {{ diagnosa?.masterdiagnosa?.rs4 }} ( {{ diagnosa?.rs3 }}
+                                )
+                              </q-item-label>
+                              <q-item-label caption lines="2" />
+                              Keterangan = {{ diagnosa?.rs6 }}
+                            </q-item-section>
+                          </q-item>
+                        </q-list>
+                      </q-card-section>
+
+                      <q-separator />
+                      <q-card-section v-if="item?.tindakan?.length" class="q-pa-none" flat bordered square dark>
+                        <q-bar class="bg-accent">
+                          <div>TINDAKAN</div>
+                        </q-bar>
+                        <q-list dark separator>
+                          <q-item v-for="(tindakan, tin) in item?.tindakan" :key="tin" v-ripple clickable>
+                            <q-item-section>
+                              <q-item-label caption lines="2" />
+                              {{ tin + 1 }}. {{ tindakan?.mastertindakan?.rs2 }}
+                              <q-item-label caption lines="2" />
+                              keterangan = {{ tindakan?.rs20 }}
+                              <div v-if="tindakan?.gambardokumens?.length > 0" class="image-row">
+                                <div v-for="(image, index) in tindakan?.gambardokumens" :key="index"
+                                  class="image-container">
+                                  <q-img :src="pathImg + image.url" class="image">
+                                    <div class="absolute-bottom">
+                                      <div class="column items-center justify-between">
+                                        <q-btn class="gt-xs" size="md" color="yellow" flat dense round
+                                          icon="icon-mat-visibility" :href="pathImg + image?.url" target="_blank" />
+                                      </div>
+                                    </div>
+                                  </q-img>
+                                </div>
+                              </div>
+                            </q-item-section>
+                          </q-item>
+                        </q-list>
+                      </q-card-section>
+                      <q-separator />
+
+                      <q-card-section v-if="item?.laborat?.length || item?.laborats?.length" class="q-pa-none">
+                        <q-bar class="bg-accent">
+                          PEMERIKSAAN LABORAT
+                        </q-bar>
+                        <q-markup-table separator="vertical" flat bordered dense dark>
+                          <thead>
+                            <tr>
+                              <th class="text-left">
+                                Nama Pemeriksaan
+                              </th>
+                              <th class="text-left">
+                                Kelompok Pemeriksaan
+                              </th>
+                              <th class="text-left">
+                                Satuan Normal
+                              </th>
+                              <th class="text-right">
+                                Hasil
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr v-for="(lab, l) in item?.laborat" :key="l" v-ripple clickable>
+                              <td class="text-left ellipsis" style="max-width: 250px;">
+                                {{ lab?.pemeriksaanlab?.rs2 }}
+                              </td>
+                              <td class="text-right" style="max-width: 150px;">
+                                {{ lab?.pemeriksaanlab?.rs21 }}
+                              </td>
+                              <td class="text-right" style="max-width: 150px;">
+                                {{ lab?.pemeriksaanlab?.rs22 }}
+                              </td>
+                              <td v-if="lab?.rs27 === ''" style="max-width: 150px;">
+                                <q-item-label class="text-right">
+                                  {{ lab?.rs21 }}
+                                </q-item-label>
+                              </td>
+                              <td v-else style="max-width: 150px;">
+                                <q-item-label class="text-right">
+                                  {{ lab?.rs21 }} ({{ lab?.rs27 }})
+                                </q-item-label>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </q-markup-table>
+                        <q-separator />
+                      </q-card-section>
+                      <q-separator />
+
+                      <q-card-section v-if="item?.transradiologi?.length && item?.hasilradiologi?.length"
+                        class="q-pa-none" flat bordered square dark>
+                        <q-bar class="bg-accent">
+                          <div>RADIOLOGI</div>
+                        </q-bar>
+                        <q-list dark separator>
+                          <q-item v-for="(radiologi, r) in item?.transradiologi" :key="r" v-ripple clickable>
+                            <q-item-section>
+                              <q-item-label>Pemeriksaan = {{ radiologi?.relmasterpemeriksaan?.rs2 }}</q-item-label>
+                              <q-item-label>Jenis Pemeriksaan Radiologi = {{ radiologi?.relmasterpemeriksaan?.rs3
+                              }}</q-item-label>
+                              <q-item-label>Hasil Pemeriksaan Radiologi = {{ item.hasilradiologi[r]?.rs3
+                              }}</q-item-label>
+                            </q-item-section>
+                          </q-item>
+                        </q-list>
+                      </q-card-section>
+
+                      <q-separator />
+                      <q-card-section v-if="item?.kamaroperasi?.length" class="q-pa-none">
+                        <q-bar class="bg-accent">
+                          TINDAKAN OPERASI
+                        </q-bar>
+                        <q-markup-table separator="vertical" flat bordered dense dark>
+                          <thead>
+                            <tr>
+                              <th class="text-left">
+                                Tanggal
+                              </th>
+                              <th class="text-right">
+                                Diagnosa
+                              </th>
+                              <th class="text-right">
+                                Tindakan Operasi
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr v-for="(operasi, l) in item?.kamaroperasi" :key="l" v-ripple clickable>
+                              <td class="text-left ellipsis" style="max-width: 250px;">
+                                {{ operasi?.rs3 }}
+                              </td>
+                              <td class="text-right" style="max-width: 150px;">
+                                {{ operasi?.mastertindakanoperasi?.rs2 }}
+                              </td>
+                              <td class="text-right" style="max-width: 150px;">
+                                {{ operasi?.mastertindakanoperasi?.rs4 }}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </q-markup-table>
+                        <q-separator />
+                      </q-card-section>
+
+                      <q-separator />
+                      <q-card-section v-if="item?.apotekrajal?.length
+                        || item?.apotekrajalpolilalu?.length
+                        || item?.apotekracikanrajal?.length
+                        || item?.apotekracikanrajallalu?.length
+                        || item?.apotekranap?.length
+                        || item?.apotekranaplalu?.length
+                        || item?.apotekranapracikanheder?.length
+                        || item?.apotekranapracikanhederlalu?.length" class="q-pa-none">
+                        <q-bar class="bg-accent">
+                          PEMBERIAN OBAT
+                        </q-bar>
+                        <q-markup-table separator="vertical" flat bordered dense dark>
+                          <thead>
+                            <tr>
+                              <th class="text-left">
+                                Tanggal
+                              </th>
+                              <th class="text-right">
+                                Obat
+                              </th>
+                              <th class="text-right">
+                                Jumlah
+                              </th>
+                            </tr>
+                          </thead>
+                          <tr v-for="(apotekranap, lxx) in item?.apotekranap" :key="lxx">
+                            <td class="text-left ellipsis" style="max-width: 250px;">
+                              {{ apotekranap?.rs3 }}
+                            </td>
+                            <td class="text-right" style="max-width: 150px;">
+                              {{ apotekranap.masterobat?.rs2 }}
+                            </td>
+                            <td class="text-right" style="max-width: 150px;">
+                              {{ apotekranap?.rs8 }}
+                            </td>
+                          </tr>
+                          <tr v-for="(apotekranaplalu, lx) in item?.apotekranaplalu" :key="lx">
+                            <td class="text-left ellipsis" style="max-width: 250px;">
+                              {{ apotekranaplalu?.rs3 }}
+                            </td>
+                            <td class="text-right" style="max-width: 150px;">
+                              {{ apotekranaplalu.masterobat?.rs2 }}
+                            </td>
+                            <td class="text-right" style="max-width: 150px;">
+                              {{ apotekranaplalu?.rs8 }}
+                            </td>
+                          </tr>
+                          <tr v-for="(apotekranapracikanheder, lxx) in item?.apotekranapracikanheder" :key="lxx">
+                            <td class="text-left ellipsis" style="max-width: 250px;">
+                              {{ apotekranapracikanheder?.rs3 }}
+                            </td>
+                            <td class="text-right" style="max-width: 150px;">
+                              {{ apotekranapracikanheder.apotekranapracikanrinci.masterobat?.rs2 }}
+                            </td>
+                            <td class="text-right" style="max-width: 150px;">
+                              {{ apotekranapracikanheder.apotekranapracikanrinci.masterobat?.rs8 }}
+                            </td>
+                          </tr>
+                          <tr v-for="(apotekranapracikanhederlalu, lxxx) in item?.apotekranapracikanhederlalu"
+                            :key="lxxx">
+                            <td class="text-left ellipsis" style="max-width: 250px;">
+                              {{ apotekranapracikanhederlalu?.rs3 }}
+                            </td>
+                            <td class="text-right" style="max-width: 150px;">
+                              {{ apotekranapracikanhederlalu.apotekranapracikanrincilalu.masterobat?.rs2 }}
+                            </td>
+                            <td class="text-right" style="max-width: 150px;">
+                              {{ apotekranapracikanhederlalu.apotekranapracikanrincilalu.masterobat?.rs8 }}
+                            </td>
+                          </tr>
+                        </q-markup-table>
+                      </q-card-section>
+
+                      <q-card-section v-if="item?.newapotekrajal?.length" class="q-pa-none">
+                        <q-bar class="bg-accent">
+                          PEMBERIAN OBAT E-RESEP
+                        </q-bar>
+                        <template v-for="(obats, lxx) in item?.newapotekrajal" :key="lxx">
+                          <div v-if="obats?.permintaanresep?.length" class="q-pa-sm">
+                            <div>
+                              <q-item-label>
+                                Riwayat Obat Tanggal : <em>{{ humanDate(obats?.tgl) }}</em>
+                              </q-item-label>
+                              <q-item-label class="q-mb-sm">
+                                <div v-if="obats?.dokter?.nama?.length">
+                                  <span>Petugas : <em>{{ obats?.dokter?.nama }}</em></span>
+                                </div>
+                                <div v-else>
+                                  <span>Petugas : <em>-</em></span>
+                                </div>
+                              </q-item-label>
+                            </div>
+                            <div class="row items-center q-mb-sm">
+                              <div class="col">
+                                <div class="text-weight-bold">
+                                  Non Racikan | {{ obats?.tiperesep }} | {{ obats?.noresep }}
+                                </div>
+                              </div>
+                            </div>
+
+                            <q-list separator bordered style="border-color: white;">
+                              <q-item v-for="(rinc, j) in obats?.rincian" :key="rinc">
+                                <q-item-section style="width: 20%;">
+                                  <div class="row">
+                                    <div class="col-1">
+                                      {{ j + 1 }}
+                                    </div>
+                                    <div class="col-11">
+                                      <div class="row text-weight-bold">
+                                        {{ rinc?.mobat?.nama_obat }}
+                                      </div>
+                                      <div class="row text-italic f-10">
+                                        {{ rinc?.kdobat }}
+                                      </div>
+                                      <div class="row text-weight-bold f-10">
+                                        ( {{ rinc?.mobat?.satuan_k }} )
+                                      </div>
+                                    </div>
+                                  </div>
+                                </q-item-section>
+                                <q-item-section side style="width:60%">
+                                  <div class="row items-center full-width">
+                                    <div class="col-12">
+                                      <div class="row q-mt-sm">
+                                        <div class="col-6">
+                                          Aturan :
+                                        </div>
+                                        <div class="col-4">
+                                          {{ rinc?.aturan }}
+                                        </div>
+                                      </div>
+                                      <div class="row q-mt-sm">
+                                        <div class="col-6">
+                                          Jumlah Obat :
+                                        </div>
+                                        <div class="col-4">
+                                          {{ rinc?.jumlah }}
+                                        </div>
+                                      </div>
+                                      <div class="row q-mt-sm">
+                                        <div class="col-6">
+                                          Konsumsi :
+                                        </div>
+                                        <div class="col-4">
+                                          {{ rinc?.konsumsi }} hari
+                                        </div>
+                                      </div>
+                                      <div class="row q-mt-sm">
+                                        <div class="col-6">
+                                          keterangan :
+                                        </div>
+                                        <div class="col-4">
+                                          {{ rinc?.keterangan }}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </q-item-section>
+                              </q-item>
+                            </q-list>
+                          </div>
+
+                          <div v-if="obats?.permintaanracikan?.length" class="q-mt-sm q-pa-sm">
+
+                            <div class="row items-center">
+                              <div class="col">
+                                <div class="text-weight-bold" v-if="obats?.poli">
+                                  Racikan | {{ obats?.tiperesep }} | {{ obats?.noresep }} ({{ obats?.poli?.rs2 }}) |
+                                  {{ obats?.sistembayar?.rs2 }}
+                                </div>
+                                <div class="text-weight-bold" v-else>
+                                  Racikan | {{ obats?.tiperesep }} | {{ obats?.noresep }} ({{
+                                    obats?.ruanganranap?.rs2 }}) | {{ obats?.sistembayar?.rs2 }}
+                                </div>
+                              </div>
+                            </div>
+                            <div v-for="(rac, r) in groupingRacikan(obats?.permintaanracikan, obats)" :key="r">
+
+                              <div>
+                                <div class="row items-center">
+                                  <div class="col-shrink q-mr-xs">
+                                    {{ rac?.namaracikan }}
+                                  </div>
+                                  <div class="col-shrink q-mr-xs">
+                                    <q-chip square class="f-10" color="primary" text-color="white" outline>
+                                      {{ rac?.tiperacikan }}
+                                    </q-chip>
+                                  </div>
+                                  <div class="col-shrink q-mr-xs text-purple text-weight-bold">
+                                    Jumlah {{ rac?.jumlahdibutuhkan }}
+                                  </div>
+                                  <div class="col-shrink q-mr-xs">
+                                    ({{ rac?.satuan_racik }})
+                                  </div>
+                                  <div class="col-shrink q-mr-xs text-italic">
+                                    {{ rac.aturan }}
+                                  </div>
+
+                                  <div class="col-shrink q-mr-xs">
+                                    | Keterangan : {{ rac?.keterangan }}
+                                  </div>
+                                </div>
+                              </div>
+                              <q-list separator bordered style="border-color: white;">
+
+                                <q-item v-for="(rincrac, rc) in rac?.rincian" :key="rc">
+                                  <q-item-section style="width: 20%;">
+                                    <div class="row text-weight-bold">
+                                      {{ rincrac?.mobat?.nama_obat }}
+                                    </div>
+                                    <div class="row text-italic f-10">
+                                      {{ rincrac?.kdobat }}
+                                    </div>
+                                    <div class="row text-weight-bold f-10">
+                                      ( {{ rincrac?.mobat?.satuan_k }} )
+                                    </div>
+                                  </q-item-section>
+                                  <q-item-section side style="width:60%">
+                                    <div class="row full-width">
+                                      <div class="col-12">
+                                        <div v-if="rincrac?.tiperacikan === 'DTD'" class="col">
+                                          <div class="row q-mt-sm">
+                                            <div class="col-6">
+                                              Dosis Resep :
+                                            </div>
+                                            <div class="col-4">
+                                              {{ rincrac?.dosismaksimum }}
+                                            </div>
+                                          </div>
+                                          <div class="row q-mt-sm">
+                                            <div class="col-6">
+                                              Dosis Obat :
+                                            </div>
+                                            <div class="col-4">
+                                              {{ rincrac?.mobat?.kekuatan_dosis }}
+                                            </div>
+                                          </div>
+                                          <div class="row q-mt-sm">
+                                            <div class="col-6">
+                                              Jumlah Resep :
+                                            </div>
+                                            <div class="col-4">
+                                              {{ rincrac?.jumlah }}
+                                            </div>
+                                          </div>
+                                          <div class="row q-mt-sm">
+                                            <div class="col-6">
+                                              Keterangan :
+                                            </div>
+                                            <div class="col-4">
+                                              {{ rincrac?.keteranganx }}
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div v-else class="col">
+                                          <div class="row q-mt-sm">
+                                            <div class="col-6">
+                                              Jumlah Resep :
+                                            </div>
+                                            <div class="col-4">
+                                              {{ jumlahResep(rincrac, rac) }}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </q-item-section>
+                                </q-item>
+                              </q-list>
+                            </div>
+                          </div>
+
+                        </template>
+                        <hr style="border-color: grey">
+
+                      </q-card-section>
+
+                      <q-card-section v-if="item?.dokumenluar?.length" class="q-pa-none" flat bordered square dark>
+                        <q-bar class="bg-accent">
+                          <div>DOKUMEN</div>
+                        </q-bar>
+                        <q-list dark separator>
+                          <div class="image-row">
+                            <div v-for="(image, index) in item?.dokumenluar" :key="index" class="image-container">
+                              <q-img :src="pathImg + image.url" class="image">
+                                <div class="absolute-bottom">
+                                  <div class="column items-center justify-between">
+                                    <q-btn class="gt-xs" size="md" color="yellow" flat dense round
+                                      icon="icon-mat-visibility" :href="pathImg + image?.url" target="_blank" />
+                                  </div>
+                                  <div>Dokumen : {{ image?.nama }}</div>
+                                  <div>Diinput Oleh : {{ image?.pegawai?.nama }}</div>
+                                </div>
+                              </q-img>
+                            </div>
+                          </div>
+                        </q-list>
+                      </q-card-section>
+                      <!-- </q-list> -->
+                    </q-card>
+                  </q-expansion-item>
+                </div>
+                <div v-else class="column flex-center" style="min-height: 860px;">
+                  MAAF ... DATA HISTORY PASIEN RAWAT INAP BELUM ADA
+                </div>
+              </q-list>
+            </q-scroll-area>
+          </q-tab-panel>
+          <q-tab-panel name="IGD" class="full-height q-pa-none">
+            <q-scroll-area style="height:calc(100% - 50px)">
+              <q-list v-if="store?.items?.length" bordered separator>
+                <div v-if="filteredItems?.length">
+                  <q-expansion-item v-for="(item, i) in filteredItems" :key="i" expand-separator
+                    :label="item?.ruangan + ' | ' + item?.rs1 + ' | DPJP : ' + item?.dpjp"
+                    :caption="tanggal(item?.tanggal)" @click="store.getEresep(item, store.tab)">
+                    <q-card dark>
+                      <q-separator />
+                      <q-card-section v-if="item?.loading" class="q-pa-none">
+                        <!-- <q-card-section class="q-pa-none"> -->
+                        <q-bar class="bg-primary">
+                          <div>Sedang Mengambil data detail <q-spinner-dots color="white" size="xs" /></div>
+                        </q-bar>
+                      </q-card-section>
+                      <q-card-section class="q-pa-none">
+                        <div v-if="item?.anamnesis?.length">
+                          <q-bar class="bg-accent">
+                            <div>ANAMNESIS</div>
+                          </q-bar>
+                          <q-list dark>
+                            <q-item v-for="(anamnesis, a) in item?.anamnesis" :key="a">
+                              <q-item-section>
+                                <q-item-label>Keluhan Utama</q-item-label>
+                                <q-item-label caption lines="2">
+                                  {{ anamnesis?.rs4 }}
+                                </q-item-label>
+                                <q-item-label>Riwayat Penyakit (Sekarang)</q-item-label>
+                                <q-item-label caption lines="2">
+                                  {{ anamnesis?.riwayatpenyakitsekarang }}
+                                </q-item-label>
+                                <q-item-label>Riwayat Penyakit</q-item-label>
+                                <q-item-label caption lines="2">
+                                  {{ anamnesis?.riwayatpenyakit }}
+                                </q-item-label>
+                                <q-item-label>Riwayat Alergi</q-item-label>
+                                <q-item-label caption lines="2">
+                                  {{ anamnesis?.riwayatalergi }}
+                                </q-item-label>
+                                <q-item-label>Reaksi berupa</q-item-label>
+                                <q-item-label caption lines="2">
+                                  {{ anamnesis?.keteranganalergi }}
+                                </q-item-label>
+                                <q-item-label>Riwayat Pengobatan</q-item-label>
+                                <q-item-label caption lines="2">
+                                  {{ anamnesis?.riwayatpengobatan }}
+                                </q-item-label>
+                                <q-item-label>Penurunan Berat Badan</q-item-label>
+                                <q-item-label caption lines="2">
+                                  {{ anamnesis?.skreeninggizi == 0 ? "Tidak" : "Ya" }}
+                                </q-item-label>
+                                <q-item-label>Asupan Makan Berkurang</q-item-label>
+                                <q-item-label caption lines="2">
+                                  {{ anamnesis?.asupanmakan == 0 ? "Tidak" : "Ya" }}
+                                </q-item-label>
+                                <q-item-label>Kondisi Khusus</q-item-label>
+                                <q-item-label caption lines="2">
+                                  {{ anamnesis?.kondisikhusus }}
+                                </q-item-label>
+                                <q-item-label>Score Nyeri</q-item-label>
+                                <q-item-label caption lines="2">
+                                  {{ anamnesis?.scorenyeri }} ( {{ anamnesis?.keteranganscorenyeri }} )
+                                </q-item-label>
+                              </q-item-section>
+                            </q-item>
+                          </q-list>
+                        </div>
+                        <div v-else>
+                          <q-bar class="bg-accent">
+                            <div>ANAMNESA tidak ada</div>
+                          </q-bar>
+                        </div>
+                      </q-card-section>
+                      <q-card-section v-if="item?.pemeriksaanfisik?.length" flat bordered square dark />
+                      <q-list separator>
+                        <q-bar class="bg-accent">
+                          <div>PEMERIKSAAN FISIK</div>
+                        </q-bar>
+                        <!-- <transition-group name="list"> -->
+                        <div v-for="(pemeriksaanfisik, f) in item?.pemeriksaanfisik" :key="f">
+                          <!-- NADI-->
+                          <q-item v-ripple class="q-pa-xs list-move" dark clickable>
+                            <q-item-section avatar>
+                              <q-icon :color="nadi(pemeriksaanfisik?.rs4).color" name="icon-my-monitor_heart"
+                                size="lg" />
+                            </q-item-section>
+                            <q-item-section class="q-pa-xs">
+                              <q-item-label :class="`text-h4 text-${nadi(pemeriksaanfisik?.rs4).color}`">
+                                {{ pemeriksaanfisik?.rs4 }}
+                              </q-item-label>
+                            </q-item-section>
+                            <q-item-section side>
+                              <q-item-label class="text-right f-10">
+                                N (HR)
+                              </q-item-label>
+                              <q-item-label class="text-right f-10">
+                                {{ nadi(pemeriksaanfisik?.rs4).res }}
+                              </q-item-label>
+                            </q-item-section>
+                          </q-item>
+                          <q-separator dark inset />
+                          <q-item v-ripple class="q-pa-xs list-move" dark clickable>
+                            <q-item-section avatar>
+                              <q-icon color="white" name="icon-my-local_hospital" size="lg" />
+                            </q-item-section>
+                            <q-item-section class="q-pa-xs">
+                              <q-item-label :class="`text-h4 text-white`">
+                                {{ pemeriksaanfisik?.pernapasan }}
+                              </q-item-label>
+                            </q-item-section>
+                            <q-item-section side>
+                              <q-item-label class="text-right f-10">
+                                RR
+                              </q-item-label>
+                              <q-item-label class="text-right f-10">
+                                -
+                              </q-item-label>
+                            </q-item-section>
+                          </q-item>
+                          <q-separator dark inset />
+                          <q-item v-ripple class="q-pa-xs list-move" dark clickable>
+                            <q-item-section avatar>
+                              <q-icon :color="suhu(pemeriksaanfisik?.suhutubuh).color"
+                                name="icon-my-standing-human-body-silhouette-svgrepo-com" size="lg" />
+                            </q-item-section>
+                            <q-item-section class="q-pa-xs">
+                              <q-item-label :class="`text-h4 text-${suhu(item?.suhutubuh).color}`">
+                                {{ pemeriksaanfisik?.suhutubuh }}
+                              </q-item-label>
+                            </q-item-section>
+                            <q-item-section side>
+                              <q-item-label class="text-right f-10">
+                                SUHU TUBUH
+                              </q-item-label>
+                              <q-item-label class="text-right f-10">
+                                {{ suhu(pemeriksaanfisik?.suhutubuh).res }}
+                              </q-item-label>
+                            </q-item-section>
+                          </q-item>
+                          <q-separator dark inset />
+                          <q-item v-ripple class="q-pa-xs list-move" dark clickable>
+                            <q-item-section class="q-pa-xs">
+                              <q-item-label :class="`text-h5 `">
+                                <span :class="`${tekananDarah(pemeriksaanfisik?.sistole).color}`">{{
+                                  pemeriksaanfisik?.sistole }}</span> /
+                                <span :class="`${tekananDarahDias(pemeriksaanfisik?.diatole).color}`">{{
+                                  pemeriksaanfisik?.diastole }}</span>
+                              </q-item-label>
+                              <q-item-label class="f-10">
+                                <span :class="`${tekananDarah(pemeriksaanfisik?.sistole).color}`">{{
+                                  tekananDarah(pemeriksaanfisik?.sistole).res }}</span> /
+                                <span :class="`${tekananDarahDias(pemeriksaanfisik?.diastole).color}`">{{
+                                  tekananDarahDias(pemeriksaanfisik?.diastole).res }}</span>
+                              </q-item-label>
+                            </q-item-section>
+                            <q-item-section side>
+                              <q-item-label class="text-right f-10">
+                                TD sys / dias
+                              </q-item-label>
+                            </q-item-section>
+                          </q-item>
+                          <!-- STATUS -->
+                          <q-separator dark inset />
+                          <q-item v-ripple class="q-pa-xs list-move" dark clickable>
+                            <q-item-section class="q-pa-xs">
+                              <q-item-label lines="2">
+                                T Kesadaran : <em>{{ getKesadaran(pemeriksaanfisik?.tingkatkesadaran) ?? '-' }}</em>
+                              </q-item-label>
+                              <q-item-label lines="2">
+                                Status Psikologis : <em>{{ pemeriksaanfisik?.statuspsikologis ?? '-' }}</em>
+                              </q-item-label>
+                              <q-item-label lines="2">
+                                Ekonomi : <em>{{ pemeriksaanfisik?.sosialekonomi ?? '-' }}</em>
+                              </q-item-label>
+                              <q-item-label lines="2">
+                                Spiritual : <em>{{ pemeriksaanfisik?.spiritual ?? '-' }}</em>
+                              </q-item-label>
+                              <q-item-label lines="2">
+                                kesadaran : <em>{{ pemeriksaanfisik?.kesadaran ?? '-' }}</em>
+                              </q-item-label>
+                            </q-item-section>
+                          </q-item>
+
+                          <!-- KHUSUS PARU POL018-->
+                          <q-separator dark inset />
+                          <q-item v-ripple class="q-pa-xs list-move" dark clickable>
+                            <q-item-section class="q-pa-xs">
+                              <q-item-label lines="2">
+                                Inspeksi : <em>{{ pemeriksaanfisik?.inspeksi ?? '-' }}</em>
+                              </q-item-label>
+                              <q-item-label lines="2">
+                                Palpasi : <em>{{ pemeriksaanfisik?.palpasi ?? '-' }}</em>
+                              </q-item-label>
+                              <q-item-label lines="2">
+                                Perkusi Dada Kanan : <em>{{ pemeriksaanfisik?.perkusidadakanan ?? '-' }}</em>
+                              </q-item-label>
+                              <q-item-label lines="2">
+                                Perkusi Dada Kiri : <em>{{ pemeriksaanfisik?.perkusidadakiri ?? '-' }}</em>
+                              </q-item-label>
+                              <q-item-label lines="2">
+                                Suara Nafas Dasar : <em>{{ pemeriksaanfisik?.auskultasisuaradasar ?? '-' }}</em>
+                              </q-item-label>
+                              <q-item-label lines="2">
+                                Suara Nafas Tambahan (Kanan) : <em>{{
+                                  pemeriksaanfisik?.auskultasisuaratambahankanan ?? '-' }}</em>
+                              </q-item-label>
+                              <q-item-label lines="2">
+                                Suara Nafas Tambahan (Kiri) : <em>{{ pemeriksaanfisik?.auskultasisuaratambahankiri ??
+                                  '-'
+                                }}</em>
+                              </q-item-label>
+                            </q-item-section>
+                          </q-item>
+                        </div>
+
+                        <q-card-section class="q-pa-none" flat bordered square dark>
+                          <q-bar class="bg-accent">
+                            <div>DIAGNOSA DPJP (memo dokter)</div>
+                          </q-bar>
+                          <q-list dark separator>
+                            <q-item>
+                              <q-item-section>
+                                <q-item-label>{{ item?.memo }} </q-item-label>
+
+                              </q-item-section>
+                            </q-item>
+                          </q-list>
+                        </q-card-section>
+
+                        <!-- </transition-group> -->
+                        <q-card-section v-if="item?.diagnosa?.length" class="q-pa-none" flat bordered square dark>
+                          <q-bar class="bg-accent">
+                            <div>DIAGNOSA</div>
+                          </q-bar>
+                          <q-list dark separator>
+                            <q-item v-for="(diagnosa, d) in item?.diagnosa" :key="d" v-ripple clickable>
+                              <q-item-section>
+                                <q-item-label>Kasus = {{ diagnosa?.rs7 }}</q-item-label>
+                                <q-item-label caption lines="2" />
+                                Jenis Diagnosa = {{ diagnosa?.rs4 }}
+                                <q-item-label>
+                                  Diagnosa = {{ diagnosa?.masterdiagnosa?.rs4 }} ( {{ diagnosa?.rs3 }}
+                                  )
+                                </q-item-label>
+                                <q-item-label caption lines="2" />
+                                Keterangan = {{ diagnosa?.rs6 }}
+                              </q-item-section>
+                            </q-item>
+                          </q-list>
+                        </q-card-section>
+                        <q-separator />
+
+                        <q-card-section v-if="item?.tindakan?.length" class="q-pa-none" flat bordered square dark>
+                          <q-bar class="bg-accent">
+                            <div>TINDAKAN</div>
+                          </q-bar>
+                          <q-list dark separator>
+                            <q-item v-for="(tindakan, tin) in item?.tindakan" :key="tin" v-ripple clickable>
+                              <q-item-section>
+                                <q-item-label caption lines="2" />
+                                {{ tin + 1 }}. {{ tindakan?.mastertindakan?.rs2 }}
+                                <q-item-label caption lines="2" />
+                                keterangan = {{ tindakan?.rs20 }}
+                                <div v-if="tindakan?.gambardokumens?.length > 0" class="image-row">
+                                  <div v-for="(image, index) in tindakan?.gambardokumens" :key="index"
+                                    class="image-container">
+                                    <q-img :src="pathImg + image.url" class="image">
+                                      <div class="absolute-bottom">
+                                        <div class="column items-center justify-between">
+                                          <q-btn class="gt-xs" size="md" color="yellow" flat dense round
+                                            icon="icon-mat-visibility" :href="pathImg + image?.url" target="_blank" />
+                                        </div>
+                                      </div>
+                                    </q-img>
+                                  </div>
+                                </div>
+                              </q-item-section>
+                            </q-item>
+                          </q-list>
+                        </q-card-section>
+                        <q-separator />
+
+                        <q-card-section v-if="item?.laborat?.length || item?.laborats?.length" class="q-pa-none">
+                          <q-bar class="bg-accent">
+                            PEMERIKSAAN LABORAT
+                          </q-bar>
+                          <q-markup-table separator="vertical" flat bordered dense dark>
+                            <thead>
+                              <tr>
+                                <th class="text-left">
+                                  Nama Pemeriksaan
+                                </th>
+                                <th class="text-left">
+                                  Kelompok Pemeriksaan
+                                </th>
+                                <th class="text-left">
+                                  Satuan Normal
+                                </th>
+                                <th class="text-right">
+                                  Hasil
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr v-for="(lab, l) in item?.laborat" :key="l" v-ripple clickable>
+                                <td class="text-left ellipsis" style="max-width: 250px;">
+                                  {{ lab?.pemeriksaanlab?.rs2 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ lab?.pemeriksaanlab?.rs21 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ lab?.pemeriksaanlab?.rs22 }}
+                                </td>
+                                <td v-if="lab?.rs27 === ''" style="max-width: 150px;">
+                                  <q-item-label class="text-right">
+                                    {{ lab?.rs21 }}
+                                  </q-item-label>
+                                </td>
+                                <td v-else style="max-width: 150px;">
+                                  <q-item-label class="text-right">
+                                    {{ lab?.rs21 }} ({{ lab?.rs27 }})
+                                  </q-item-label>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </q-markup-table>
+                          <q-separator />
+                        </q-card-section>
+
+                        <q-separator />
+
+                        <q-card-section v-if="item?.transradiologi?.length && item?.hasilradiologi?.length"
+                          class="q-pa-none" flat bordered square dark>
+                          <q-bar class="bg-accent">
+                            <div>RADIOLOGI</div>
+                          </q-bar>
+                          <q-list dark separator>
+                            <q-item v-for="(radiologi, r) in item?.transradiologi" :key="r" v-ripple clickable>
+                              <q-item-section>
+                                <q-item-label>Pemeriksaan = {{ radiologi?.relmasterpemeriksaan?.rs2 }}</q-item-label>
+                                <q-item-label>Jenis Pemeriksaan Radiologi = {{ radiologi?.relmasterpemeriksaan?.rs3
+                                }}</q-item-label>
+                                <q-item-label>Hasil Pemeriksaan Radiologi = {{ item.hasilradiologi[r]?.rs3
+                                }}</q-item-label>
+                              </q-item-section>
+                            </q-item>
+                          </q-list>
+                        </q-card-section>
+
+                        <q-separator />
+                        <q-card-section v-if="item?.kamaroperasi?.length" class="q-pa-none">
+                          <q-bar class="bg-accent">
+                            TINDAKAN OPERASI
+                          </q-bar>
+                          <q-markup-table separator="vertical" flat bordered dense dark>
+                            <thead>
+                              <tr>
+                                <th class="text-left">
+                                  Tanggal
+                                </th>
+                                <th class="text-right">
+                                  Diagnosa
+                                </th>
+                                <th class="text-right">
+                                  Tindakan Operasi
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr v-for="(operasi, l) in item?.kamaroperasi" :key="l" v-ripple clickable>
+                                <td class="text-left ellipsis" style="max-width: 250px;">
+                                  {{ operasi?.rs3 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ operasi?.mastertindakanoperasi?.rs2 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ operasi?.mastertindakanoperasi?.rs4 }}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </q-markup-table>
+                          <q-separator />
+                        </q-card-section>
+
+                        <q-separator />
+                        <q-card-section v-if="item?.apotekrajal?.length
+                          || item?.apotekrajalpolilalu?.length
+                          || item?.apotekracikanrajal?.length
+                          || item?.apotekracikanrajallalu?.length
+                          || item?.apotekranap?.length
+                          || item?.apotekranaplalu?.length
+                          || item?.apotekranapracikanheder?.length
+                          || item?.apotekranapracikanhederlalu?.length" class="q-pa-none">
+                          <q-bar class="bg-accent">
+                            PEMBERIAN OBAT
+                          </q-bar>
+                          <q-markup-table separator="vertical" flat bordered dense dark>
+                            <thead>
+                              <tr>
+                                <th class="text-left">
+                                  Tanggal
+                                </th>
+                                <th class="text-right">
+                                  Obat
+                                </th>
+                                <th class="text-right">
+                                  Jumlah
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr v-for="(apotekrajal, wew) in item?.apotekrajal" :key="wew">
+                                <td class="text-left ellipsis" style="max-width: 250px;">
+                                  {{ apotekrajal?.rs3 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekrajal.masterobat?.rs2 }}
+                                </td>
+                                <td v-if="apotekrajal?.rs27?.length > 0 && apotekrajal?.rs28?.length > 0"
+                                  class="text-right" style="max-width: 250px;">
+                                  {{ getInteger(apotekrajal?.rs27) + ' X ' + getInteger(apotekrajal?.rs28) }}
+                                </td>
+                                <td v-else class="text-right" style="max-width: 250px;">
+                                  {{ '-' }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekrajal?.rs8 }}
+                                </td>
+                              </tr>
+                              <tr v-for="(apotekrajalpolilalu, lll) in item?.apotekrajalpolilalu" :key="lll">
+                                <td class="text-left ellipsis" style="max-width: 250px;">
+                                  {{ apotekrajalpolilalu?.rs3 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekrajalpolilalu.masterobat?.rs2 }}
+                                </td>
+                                <td
+                                  v-if="apotekrajalpolilalu?.rs27?.length > 0 && apotekrajalpolilalu?.rs28?.length > 0"
+                                  class="text-right" style="max-width: 250px;">
+                                  {{ getInteger(apotekrajalpolilalu?.rs27) + ' X ' +
+                                    getInteger(apotekrajalpolilalu?.rs28) }}
+                                </td>
+                                <td v-else class="text-right" style="max-width: 250px;">
+                                  {{ '-' }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekrajalpolilalu?.rs8 }}
+                                </td>
+                              </tr>
+                              <tr v-for="(apotekracikanrajal, llll) in item?.apotekracikanrajal" :key="llll">
+                                <td class="text-left ellipsis" style="max-width: 250px;">
+                                  {{ apotekracikanrajal?.rs3 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekracikanrajal.masterobat?.rs2 }}
+                                </td>
+                                <td class="text-left ellipsis" style="max-width: 250px;">
+                                  {{ '-' }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekracikanrajal?.rs5 }}
+                                </td>
+                              </tr>
+                              <tr v-for="(apotekracikanrajallalu, llll) in item?.apotekracikanrajallalu" :key="llll">
+                                <td class="text-left ellipsis" style="max-width: 250px;">
+                                  {{ apotekracikanrajallalu?.rs3 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekracikanrajallalu.masterobat?.rs2 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ '-' }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekracikanrajallalu?.rs5 }}
+                                </td>
+                              </tr>
+                              <tr v-for="(apotekranap, lxx) in item?.apotekranap" :key="lxx">
+                                <td class="text-left ellipsis" style="max-width: 250px;">
+                                  {{ apotekranap?.rs3 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekranap.masterobat?.rs2 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekranap?.rs8 }}
+                                </td>
+                              </tr>
+                              <tr v-for="(apotekranaplalu, lx) in item?.apotekranaplalu" :key="lx">
+                                <td class="text-left ellipsis" style="max-width: 250px;">
+                                  {{ apotekranaplalu?.rs3 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekranaplalu.masterobat?.rs2 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekranaplalu?.rs8 }}
+                                </td>
+                              </tr>
+                              <tr v-for="(apotekranapracikanheder, lxx) in item?.apotekranapracikanheder" :key="lxx">
+                                <td class="text-left ellipsis" style="max-width: 250px;">
+                                  {{ apotekranapracikanheder?.rs3 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekranapracikanheder.apotekranapracikanrinci.masterobat?.rs2 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekranapracikanheder.apotekranapracikanrinci.masterobat?.rs8 }}
+                                </td>
+                              </tr>
+                              <tr v-for="(apotekranapracikanhederlalu, lxxx) in item?.apotekranapracikanhederlalu"
+                                :key="lxxx">
+                                <td class="text-left ellipsis" style="max-width: 250px;">
+                                  {{ apotekranapracikanhederlalu?.rs3 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekranapracikanhederlalu.apotekranapracikanrincilalu.masterobat?.rs2 }}
+                                </td>
+                                <td class="text-right" style="max-width: 150px;">
+                                  {{ apotekranapracikanhederlalu.apotekranapracikanrincilalu.masterobat?.rs8 }}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </q-markup-table>
+                        </q-card-section>
+
+                        <q-card-section v-if="item?.newapotekrajal?.length" class="q-pa-none">
+                          <q-bar class="bg-accent">
+                            PEMBERIAN OBAT E-RESEP
+                          </q-bar>
+                          <template v-for="(obats, i) in item?.newapotekrajal" :key="i">
+                            <div v-if="obats?.permintaanresep?.length" class="q-pa-sm">
+                              <div>
+                                <q-item-label>
+                                  Riwayat Obat Tanggal : <em>{{ humanDate(obats?.tgl) }}</em>
+                                </q-item-label>
+                                <q-item-label class="q-mb-sm">
+                                  <div v-if="obats?.dokter?.nama?.length">
+                                    <span>Petugas : <em>{{ obats?.dokter?.nama }}</em></span>
+                                  </div>
+                                  <div v-else>
+                                    <span>Petugas : <em>-</em></span>
+                                  </div>
+                                </q-item-label>
+                              </div>
+                              <div class="row items-center q-mb-sm">
+                                <div class="col">
+                                  <div class="text-weight-bold">
+                                    Non Racikan | {{ obats?.tiperesep }} | {{ obats?.noresep }}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <q-list separator bordered style="border-color: white;">
+                                <q-item v-for="(rinc, j) in obats?.rincian" :key="rinc">
+                                  <q-item-section style="width: 20%;">
+                                    <div class="row">
+                                      <div class="col-1">
+                                        {{ j + 1 }}
+                                      </div>
+                                      <div class="col-11">
+                                        <div class="row text-weight-bold">
+                                          {{ rinc?.mobat?.nama_obat }}
+                                        </div>
+                                        <div class="row text-italic f-10">
+                                          {{ rinc?.kdobat }}
+                                        </div>
+                                        <div class="row text-weight-bold f-10">
+                                          ( {{ rinc?.mobat?.satuan_k }} )
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </q-item-section>
+                                  <q-item-section side style="width:60%">
+                                    <div class="row items-center full-width">
+                                      <div class="col-12">
+                                        <div class="row q-mt-sm">
+                                          <div class="col-6">
+                                            Aturan :
+                                          </div>
+                                          <div class="col-4">
+                                            {{ rinc?.aturan }}
+                                          </div>
+                                        </div>
+                                        <div class="row q-mt-sm">
+                                          <div class="col-6">
+                                            Jumlah Obat :
+                                          </div>
+                                          <div class="col-4">
+                                            {{ rinc?.jumlah }}
+                                          </div>
+                                        </div>
+                                        <div class="row q-mt-sm">
+                                          <div class="col-6">
+                                            Konsumsi :
+                                          </div>
+                                          <div class="col-4">
+                                            {{ rinc?.konsumsi }} hari
+                                          </div>
+                                        </div>
+                                        <div class="row q-mt-sm">
+                                          <div class="col-6">
+                                            keterangan :
+                                          </div>
+                                          <div class="col-4">
+                                            {{ rinc?.keterangan }}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </q-item-section>
+                                </q-item>
+                              </q-list>
+                            </div>
+
+                            <div v-if="obats?.permintaanracikan?.length" class="q-mt-sm q-pa-sm">
+
+                              <div class="row items-center">
+                                <div class="col">
+                                  <div class="text-weight-bold" v-if="obats?.poli">
+                                    Racikan | {{ obats?.tiperesep }} | {{ obats?.noresep }} ({{ obats?.poli?.rs2 }}) |
+                                    {{ obats?.sistembayar?.rs2 }}
+                                  </div>
+                                  <div class="text-weight-bold" v-else>
+                                    Racikan | {{ obats?.tiperesep }} | {{ obats?.noresep }} ({{
+                                      obats?.ruanganranap?.rs2 }}) | {{ obats?.sistembayar?.rs2 }}
+                                  </div>
+                                </div>
+                              </div>
+                              <div v-for="(rac, r) in groupingRacikan(obats?.permintaanracikan, obats)" :key="r">
+
+                                <div>
+                                  <div class="row items-center">
+                                    <div class="col-shrink q-mr-xs">
+                                      {{ rac?.namaracikan }}
+                                    </div>
+                                    <div class="col-shrink q-mr-xs">
+                                      <q-chip square class="f-10" color="primary" text-color="white" outline>
+                                        {{ rac?.tiperacikan }}
+                                      </q-chip>
+                                    </div>
+                                    <div class="col-shrink q-mr-xs text-purple text-weight-bold">
+                                      Jumlah {{ rac?.jumlahdibutuhkan }}
+                                    </div>
+                                    <div class="col-shrink q-mr-xs">
+                                      ({{ rac?.satuan_racik }})
+                                    </div>
+                                    <div class="col-shrink q-mr-xs text-italic">
+                                      {{ rac.aturan }}
+                                    </div>
+
+                                    <div class="col-shrink q-mr-xs">
+                                      | Keterangan : {{ rac?.keterangan }}
+                                    </div>
+                                  </div>
+                                </div>
+                                <q-list separator bordered style="border-color: white;">
+
+                                  <q-item v-for="(rincrac, rc) in rac?.rincian" :key="rc">
+                                    <q-item-section style="width: 20%;">
+                                      <div class="row text-weight-bold">
+                                        {{ rincrac?.mobat?.nama_obat }}
+                                      </div>
+                                      <div class="row text-italic f-10">
+                                        {{ rincrac?.kdobat }}
+                                      </div>
+                                      <div class="row text-weight-bold f-10">
+                                        ( {{ rincrac?.mobat?.satuan_k }} )
+                                      </div>
+                                    </q-item-section>
+                                    <q-item-section side style="width:60%">
+                                      <div class="row full-width">
+                                        <div class="col-12">
+                                          <div v-if="rincrac?.tiperacikan === 'DTD'" class="col">
+                                            <div class="row q-mt-sm">
+                                              <div class="col-6">
+                                                Dosis Resep :
+                                              </div>
+                                              <div class="col-4">
+                                                {{ rincrac?.dosismaksimum }}
+                                              </div>
+                                            </div>
+                                            <div class="row q-mt-sm">
+                                              <div class="col-6">
+                                                Dosis Obat :
+                                              </div>
+                                              <div class="col-4">
+                                                {{ rincrac?.mobat?.kekuatan_dosis }}
+                                              </div>
+                                            </div>
+                                            <div class="row q-mt-sm">
+                                              <div class="col-6">
+                                                Jumlah Resep :
+                                              </div>
+                                              <div class="col-4">
+                                                {{ rincrac?.jumlah }}
+                                              </div>
+                                            </div>
+                                            <div class="row q-mt-sm">
+                                              <div class="col-6">
+                                                Keterangan :
+                                              </div>
+                                              <div class="col-4">
+                                                {{ rincrac?.keteranganx }}
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div v-else class="col">
+                                            <div class="row q-mt-sm">
+                                              <div class="col-6">
+                                                Jumlah Resep :
+                                              </div>
+                                              <div class="col-4">
+                                                {{ jumlahResep(rincrac, rac) }}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </q-item-section>
+                                  </q-item>
+                                </q-list>
+                              </div>
+                            </div>
+                            <hr style="border-color: grey">
+
+                          </template>
+
+                        </q-card-section>
+
+                        <q-card-section v-if="item?.dokumenluar?.length" class="q-pa-none" flat bordered square dark>
+                          <q-bar class="bg-accent">
+                            <div>DOKUMEN</div>
+                          </q-bar>
+                          <q-list dark separator>
+                            <div class="image-row">
+                              <div v-for="(image, index) in item?.dokumenluar" :key="index" class="image-container">
+                                <q-img :src="pathImg + image.url" class="image">
+                                  <div class="absolute-bottom">
+                                    <div class="column items-center justify-between">
+                                      <q-btn class="gt-xs" size="md" color="yellow" flat dense round
+                                        icon="icon-mat-visibility" :href="pathImg + image?.url" target="_blank" />
+                                    </div>
+                                    <div>Dokumen : {{ image?.nama }}</div>
+                                    <div>Diinput Oleh : {{ image?.pegawai?.nama }}</div>
+                                  </div>
+                                </q-img>
+                              </div>
+                            </div>
+                          </q-list>
+                        </q-card-section>
+                      </q-list>
+                    </q-card>
+                  </q-expansion-item>
+                </div>
+                <div v-else class="column flex-center" style="min-height: 860px;">
+                  MAAF ... DATA HISTORY PASIEN IGD BELUM ADA
+                </div>
+              </q-list>
+            </q-scroll-area>
+          </q-tab-panel>
+        </q-tab-panels>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+
+import { dateFullFormat, formatJam, humanDate } from 'src/modules/formatter'
+import { useHistoryPasien } from 'src/stores/simrs/pelayanan/poli/historypasien'
+import { onMounted, computed } from 'vue'
+import { pathImg } from 'src/boot/axios'
+
+// const PraAnestesi = defineAsyncComponent(() => import('src/pages/simrs/dokumen/erm/poli/AsesmenPraAnestesia.vue'))
+
+const props = defineProps({
+  pasien: {
+    type: Object,
+    default: null
+  },
+  noHeader: {
+    type: Boolean,
+    default: false
+  }
+})
+
+const emits = defineEmits(['close', 'hapus', 'edit', 'preview'])
+
+const tanggal = (val) => {
+  return dateFullFormat(val) + ' ~ ' + formatJam(val)
+}
+
+const store = useHistoryPasien()
+onMounted(() => {
+  store.metaEresep = null
+  store.getData(props.pasien)
+})
+
+const filteredItems = computed(() => {
+  let tabs = 'Poli'
+  if (store.tab === 'Rawat Jalan') {
+    tabs = 'Poli'
+  }
+  else if (store.tab === 'Rawat Inap') {
+    tabs = 'Ruang'
+  }
+  else {
+    tabs = 'IRD'
+  }
+  return store.items.filter(item => item.ruangan?.includes(tabs))
+})
+
+function nadi (val) {
+  const bradikardi = val < 60
+  const normal = val >= 61 && val <= 100
+  const takikardi = val > 100
+
+  let obj = {
+    color: 'teal',
+    res: 'Normal'
+  }
+  if (bradikardi) {
+    obj = { color: 'red', res: 'Brakikardi' }
+  }
+  else if (normal) {
+    obj = { color: 'teal', res: 'Normal' }
+  }
+  else if (takikardi) {
+    obj = { color: 'red', res: 'Takikardi' }
+  }
+
+  return obj
+}
+
+function suhu (val) {
+  const hipotermia = val < 35
+  const normal = val >= 35 && val < 37
+  const pireksia = val >= 37 && val <= 41.1
+  const hipertermia = val > 41.1
+
+  let obj = {
+    color: 'teal',
+    res: 'normal'
+  }
+  if (hipotermia) {
+    obj = { color: 'red', res: 'Hipotermia' }
+  }
+  else if (normal) {
+    obj = { color: 'teal', res: 'Normal' }
+  }
+  else if (pireksia) {
+    obj = { color: 'red', res: 'Pireksia/febris' }
+  }
+  else if (hipertermia) {
+    obj = { color: 'red', res: 'Hipertermia' }
+  }
+
+  return obj
+}
+
+function getKesadaran (val) {
+  const temp = store.optionsTingkatkesadaran.filter(a => a.value === val)
+  if (temp?.length) {
+    return temp[0].label
+  }
+  else {
+    return '-'
+  }
+}
+// eslint-disable-next-line no-unused-vars
+function tekananDarah (val) {
+  const normal = val >= 100 && val <= 120
+  const prahipertensi = val >= 121 && val <= 139
+  const hipertensiderajat1 = val >= 140 && val <= 159
+  const hipertensiderajat2 = val >= 160
+
+  let obj = {
+    color: 'text-teal',
+    res: 'normal'
+  }
+  if (normal) {
+    obj = { color: 'text-teal', res: 'Normal' }
+  }
+  else if (prahipertensi) {
+    obj = { color: 'text-red', res: 'Prahipertensi' }
+  }
+  else if (hipertensiderajat1) {
+    obj = { color: 'text-red', res: 'Hipertensi Derajat 1' }
+  }
+  else if (hipertensiderajat2) {
+    obj = { color: 'text-red', res: 'Hipertensi Derajat 2' }
+  }
+  else {
+    obj = { color: 'text-red', res: 'Not Valid' }
+  }
+
+  return obj
+}
+
+function tekananDarahDias (val) {
+  const normal = val >= 60 && val <= 79
+  const prahipertensi = val >= 80 && val <= 89
+  const hipertensiderajat1 = val >= 90 && val <= 99
+  const hipertensiderajat2 = val >= 100
+
+  let obj = {
+    color: 'text-teal',
+    res: 'normal'
+  }
+  if (normal) {
+    obj = { color: 'text-teal', res: 'Normal' }
+  }
+  else if (prahipertensi) {
+    obj = { color: 'text-red', res: 'Prahipertensi' }
+  }
+  else if (hipertensiderajat1) {
+    obj = { color: 'text-red', res: 'Hipertensi Derajat 1' }
+  }
+  else if (hipertensiderajat2) {
+    obj = { color: 'text-red', res: 'Hipertensi Derajat 2' }
+  }
+  else {
+    obj = { color: 'text-red', res: 'LOW' }
+  }
+
+  return obj
+}
+
+function getInteger (str) {
+  const parts = str.split('.')
+
+  if (parts?.length > 1 && parseInt(parts[1]) === 0) {
+    return parts[0]
+  }
+
+  return str
+}
+
+function groupingRacikan (val, resep) {
+  const namaRacikan = [... new Set(val.map(a => a.namaracikan))]
+  const rincianrac = resep?.rincianracik ?? []
+  const list = []
+  namaRacikan.forEach(a => {
+    const rac = val.find(b => b.namaracikan === a)
+    list.push({
+      namaracikan: a,
+      tiperacikan: rac?.tiperacikan,
+      jumlahdibutuhkan: rac?.jumlahdibutuhkan,
+      aturan: rac?.aturan,
+      satuan_racik: rac?.satuan_racik,
+      keterangan: rac?.keterangan,
+      rincian: val.filter(b => b.namaracikan === a),
+      rincianracik: rincianrac.filter(b => b.namaracikan === a)
+    })
+  })
+  // console.log('groping', list, namaRacikan, val, resep)
+
+  return list
+
+}
+function jumlahResep (item, list) {
+  const obat = list?.rincianracik.find(b => b.kdobat === item?.kdobat)
+  // console.log('obat', item, obat, list)
+  const jumlah = obat?.jumlah ?? item?.jumlah
+  return jumlah
+
+}
+// function arrayToString(val) {
+//   const value = val.join(', ')
+//   return value
+// }
+</script>
+
+<style>
+.image-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.image-container {
+  flex-basis: calc(30% - 5px);
+  /* Adjust this value to add spacing between images */
+  margin: 10px;
+  /* Adjust margin as needed */
+}
+
+.image {
+  height: 300px;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+table,
+th,
+td {
+  border: 1px solid grey;
+}
+</style>
