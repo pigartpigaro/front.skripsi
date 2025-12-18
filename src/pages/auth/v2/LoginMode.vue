@@ -25,16 +25,16 @@
           </div>
         </div>
         <template v-if="!loading">
-          <div v-if="mode === 'login-model-jadul' && !isMobile"
+          <div v-if="mode === 'login-mode' && !isMobile"
             class="login-form col-md-6 col-lg-6 col-xl-6 col-sm-6 col-xs-12 min-h">
             <FormLogin :key="mode" />
           </div>
-          <div v-else-if="mode === 'qr' && isMobile"
+          <div v-else-if="mode === 'register' && isMobile"
             class="login-form col-md-6 col-lg-6 col-xl-6 col-sm-6 col-xs-12 min-h">
             <FormLogin :key="isMobile" />
           </div>
           <div v-else class="login-qr col-md-6 col-lg-6 col-xl-6 col-sm-6 col-xs-12 min-h">
-            <FormQr :key="mode" :qr="store.qrCode" />
+            <FormRegister :key="mode" :register="store.qrCode" />
           </div>
         </template>
 
@@ -63,7 +63,7 @@
 import { useQuasar } from 'quasar'
 import { useIdentityStore } from 'src/stores/auth/identity'
 import FormLogin from './FormLogin.vue'
-import FormQr from './FormQr.vue'
+import FormRegister from './FormRegister.vue'
 
 import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from 'src/stores/auth'
@@ -81,7 +81,7 @@ const isMobile = ref($q.platform.is.mobile)
 defineProps({
   mode: {
     type: String,
-    default: 'login-model-jadul'
+    default: 'login-mode'
   },
   loading: {
     type: Boolean,

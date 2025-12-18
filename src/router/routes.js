@@ -1,8 +1,5 @@
 import {
-  pegawai, sigarang, antrian, laborat, laporan, settings,
-  masters, pendaftaran, percobaan, farmasi, poli, monitoring, kasir, dokumen, gudang, ptk, depo, ruangan, igd, ranap, satset,
-  kamaroperasi, rehabmedik, hemodialisa, siasik, radiologi, rekammedik, cathlab, akuntansi, ruangkonsul,
-  unitpengelolaharsip, mpp, penjaminan
+  sigarang, settings, percobaan, unitpengelolaharsip,
 } from './modules'
 
 const routes = [
@@ -73,47 +70,19 @@ const routes = [
     ]
   },
   settings,
-  pegawai,
   sigarang,
-  antrian,
-  masters,
-  laporan,
-  pendaftaran,
-  laborat,
   percobaan,
-  farmasi,
-  poli,
-  monitoring,
-  kasir,
-  dokumen,
-  gudang,
-  ptk,
-  depo,
-  ruangan,
-  igd,
-  ranap,
-  satset,
-  kamaroperasi,
-  rehabmedik,
-  hemodialisa,
-  siasik,
-  radiologi,
-  rekammedik,
-  cathlab,
-  akuntansi,
-  ruangkonsul,
   unitpengelolaharsip,
-  mpp,
-  penjaminan,
-  {
-    path: '/display_antrian',
-    component: () => import('layouts/antrian/display/DisplayLayout.vue'),
-    meta: { requireAuth: false },
-    children: [
-      { path: '', component: () => import('pages/simrs/antrian/display/IndexPage.vue') }
-    ]
+  // penjaminan,
+  // {
+  //   path: '/display_antrian',
+  //   component: () => import('layouts/antrian/display/DisplayLayout.vue'),
+  //   meta: { requireAuth: false },
+  //   children: [
+  //     { path: '', component: () => import('pages/simrs/antrian/display/IndexPage.vue') }
+  //   ]
 
-  },
+  // },
 
   {
     path: '/login',
@@ -124,10 +93,10 @@ const routes = [
 
       // { path: '', redirect: '/login/mode/qr' },
       // { path: '/login/mode', redirect: '/login/mode/qr' },
-      { path: '', redirect: '/login/mode/login-model-jadul' },
-      { path: '/login/mode', redirect: '/login/mode/login-model-jadul' },
+      { path: '', redirect: '/login/mode/login-mode' },
+      { path: '/login/mode', redirect: '/login/mode/login-mode' },
 
-      { path: '/login/mode/:mode', name: 'login-mode', component: () => import('pages/auth/LoginPageV2.vue') }
+      { path: '/login/mode/:mode', name: 'register', component: () => import('pages/auth/LoginPageV2.vue') }
     ]
   },
 

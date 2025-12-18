@@ -1,3 +1,0 @@
-<template>
-  Halaman Racikan
-</template>

@@ -1,3 +1,0 @@
-<template>
-  halaman stok
-</template>

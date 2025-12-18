@@ -40,12 +40,20 @@
               Loading...
             </template>
           </q-btn>
-          <!-- <div class="column flex-center cursor-pointer f-12" :class="hoverred ? 'text-red' : 'text-grey-4'"
-            @mouseover="hoverred = true" @mouseleave="hoverred = false" @click="goToQr()">
+
+
+          <!-- <q-btn push color="white" text-color="primary" label="Register" type="button" @click="goToRegister()">
+            <template #loading>
+              <q-spinner-hourglass class="on-right" />
+              Loading...
+            </template>
+          </q-btn> -->
+          <div class="column flex-center cursor-pointer f-12" :class="hoverred ? 'text-red' : 'text-grey-4'"
+            @mouseover="hoverred = true" @mouseleave="hoverred = false" @click="goToRegister()">
             <q-icon name="icon-mat-qr_code_2" size="lg" />
             <div>Login Qr ?</div>
             <div>Klik disini</div>
-          </div> -->
+          </div>
         </div>
       </q-form>
     </div>
@@ -53,6 +61,7 @@
       app versi v{{ appVersion }}
     </div>
   </div>
+
 </template>
 
 <script setup>
@@ -63,12 +72,11 @@ import { useRouter } from 'vue-router'
 import packageJson from '../../../../package.json'
 const $q = useQuasar()
 const router = useRouter()
-
 const appVersion = ref(packageJson.version || '0.0.1')
-
+const registers = ref(null)
 const isPasw = ref(true)
 const hoverred = ref(false)
-const myForm = ref(null)
+const myForm = ref(false)
 const form = ref({
   email: '',
   password: '',
@@ -105,6 +113,10 @@ function onSubmit() {
 
 function goToQr() {
   router.push({ name: 'login-mode', params: { mode: 'qr' }, replace: true })
+  // location.reload()
+}
+function goToRegister() {
+  router.push({ name: 'register', params: { mode: 'register' }, replace: true })
   // location.reload()
 }
 </script>
