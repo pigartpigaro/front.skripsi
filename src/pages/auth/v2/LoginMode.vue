@@ -25,7 +25,7 @@
           </div>
         </div>
         <template v-if="!loading">
-          <div v-if="mode === 'login-mode' && !isMobile"
+          <div v-if="mode === 'form-login' && !isMobile"
             class="login-form col-md-6 col-lg-6 col-xl-6 col-sm-6 col-xs-12 min-h">
             <FormLogin :key="mode" />
           </div>
@@ -81,7 +81,7 @@ const isMobile = ref($q.platform.is.mobile)
 defineProps({
   mode: {
     type: String,
-    default: 'login-mode'
+    default: 'form-login'
   },
   loading: {
     type: Boolean,

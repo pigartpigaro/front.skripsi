@@ -93,10 +93,10 @@ const routes = [
 
       // { path: '', redirect: '/login/mode/qr' },
       // { path: '/login/mode', redirect: '/login/mode/qr' },
-      { path: '', redirect: '/login/mode/login-mode' },
-      { path: '/login/mode', redirect: '/login/mode/login-mode' },
+      { path: '', redirect: '/login/mode/form-login' },
+      { path: '/login/mode', redirect: '/login/mode/form-login' },
 
-      { path: '/login/mode/:mode', name: 'register', component: () => import('pages/auth/LoginPageV2.vue') }
+      { path: '/login/mode/:mode', name: 'login-mode', component: () => import('pages/auth/LoginPageV2.vue') }
     ]
   },
 

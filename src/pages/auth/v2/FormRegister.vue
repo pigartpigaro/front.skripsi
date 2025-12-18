@@ -1,13 +1,12 @@
 <template>
-  <div class="full-height column flex-center items-center text-white">
-    <div class="form">
-      <div class="text-h6">
+  <div class="login-form full-height column flex-center text-white q-pa-lg">
+    <div class="form q-mb-sm">
+      <div class="text-h6 judul-form">
         REGISTER
       </div>
     </div>
-
-    <div class="q-my-md full-width">
-      <q-form ref="myForm" class="q-pa-md" @submit="onSubmit">
+    <div class="q-my-sm full-width">
+      <q-form ref="myForm" class="q-pa-sm" @submit="onSubmit">
         <q-input v-model="form.name" color="white" label="Nama" dark
           :rules="[val => !!val || 'Harap diisi terlebih dahulu']" autocorrect="off" autocapitalize="off"
           autocomplete="chrome-off" spellcheck="false">
@@ -67,10 +66,14 @@
           <!-- <q-btn flat color="white" label="Kembali ke Login" @click="router.push({ name: 'login' })" /> -->
           <div class="column flex-center cursor-pointer f-12" :class="hoverred ? 'text-red' : 'text-grey-4'"
             @mouseover="hoverred = true" @mouseleave="hoverred = false" @click="goToLogin()">
-            <div>Back to Login</div>
+            <div>Already have an account?</div>
+            <div>Login Now</div>
           </div>
         </div>
       </q-form>
+    </div>
+    <div class="app-v text-grey-4">
+      app versi v{{ appVersion }}
     </div>
   </div>
 </template>
@@ -80,6 +83,8 @@ import { ref } from 'vue'
 import { useAuthStore } from 'src/stores/auth'
 import { useRouter } from 'vue-router'
 
+import packageJson from '../../../../package.json'
+const appVersion = ref(packageJson.version || '0.0.1')
 defineProps({
   register: {
     type: String,
@@ -105,7 +110,30 @@ function onSubmit() {
 }
 
 function goToLogin() {
-  router.push({ name: 'login', params: { mode: 'login-mode' }, replace: true })
+  router.push({ name: 'login-mode', params: { mode: 'form-login' }, replace: true })
   // location.reload()
 }
 </script>
+<style lang="scss" scoped>
+.app-v {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+}
+
+.q-field__native {
+
+  &:-webkit-autofill,
+  &:-webkit-autofill:hover,
+  &:-webkit-autofill:focus,
+  &:-webkit-autofill:active {
+    transition: background-color 9999s ease-in-out 0s;
+  }
+
+  // &input:-internal-autofill-previewed,
+  // &input:-internal-autofill-selected{
+  //   -webkit-box-shadow: none;
+  // }
+
+}
+</style>

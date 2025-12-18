@@ -50,9 +50,8 @@
           </q-btn> -->
           <div class="column flex-center cursor-pointer f-12" :class="hoverred ? 'text-red' : 'text-grey-4'"
             @mouseover="hoverred = true" @mouseleave="hoverred = false" @click="goToRegister()">
-            <q-icon name="icon-mat-qr_code_2" size="lg" />
-            <div>Login Qr ?</div>
-            <div>Klik disini</div>
+            <div>Don't have an account?</div>
+            <div>Register Now</div>
           </div>
         </div>
       </q-form>
@@ -116,7 +115,7 @@ function goToQr() {
   // location.reload()
 }
 function goToRegister() {
-  router.push({ name: 'register', params: { mode: 'register' }, replace: true })
+  router.push({ name: 'login-mode', params: { mode: 'register' }, replace: true })
   // location.reload()
 }
 </script>
